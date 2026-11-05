@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Instant Teleport Farm
+-- The Strongest Battlegrounds - Halloween Ultimate Speed Farm (Direct Fast Teleport)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -7,8 +7,8 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenInstantGui") then
-    CoreGui.TSBHalloweenInstantGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenSpeedMasterGui") then
+    CoreGui.TSBHalloweenSpeedMasterGui:Destroy()
 end
 
 -- Chống AFK
@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenInstantGui"
+screenGui.Name = "TSBHalloweenSpeedMasterGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -51,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Instant Farm"
+title.Text = "Halloween Speed Master Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -118,8 +118,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Instant Teleport)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Instant Bypass)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Tốc Độ Tối Đa)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Force Instant)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -138,7 +138,7 @@ local validCandies = {
 
 local openedDoors = {}
 
--- Cố định trạng thái noclip vĩnh viễn và đóng băng trọng lực để cơ thể không bị rơi
+-- Cố định noclip và chống rơi
 RunService.Stepped:Connect(function()
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -156,12 +156,12 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.05)
+        task.wait(0.02)
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. AUTO NHẶT KẸO (Teleport siêu tốc ngửa mặt dưới đất, gom cụm đông nhất)
+            -- 1. AUTO NHẶT KẸO (Ưu tiên tốc độ tối đa, tele thẳng vào viên kẹo, không chìm đất không xoay người)
             if settings.autoCandy then
                 local bestCandyCenter = nil
                 local maxCandiesInCluster = 0
@@ -202,50 +202,52 @@ task.spawn(function()
                 end
                 
                 if bestCandyCenter then
-                    -- Teleport tức thì, chìm dưới đất 2 studs, ngửa mặt lên trời (trục X -90 độ)
-                    hrp.CFrame = bestCandyCenter.CFrame * CFrame.new(0, -2, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                    task.wait(0.05)
+                    -- Teleport thẳng đứng chuẩn xác ngay vị trí kẹo với tốc độ chớp nhoáng
+                    hrp.CFrame = bestCandyCenter.CFrame
+                    task.wait(0.02)
                     continue
                 end
             end
             
-            -- 2. AUTO GÕ CỬA (Teleport thẳng vào tâm gốc cây, cưỡng chế kích hoạt prompt tức thì bất chấp khoảng cách hay trạng thái nút)
+            -- 2. AUTO GÕ CỬA (Teleport vào sau gốc cây và ép mở siêu tốc)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
-                        local prompt = nil
+                        local promptList = {}
                         for _, p in pairs(obj:GetDescendants()) do
                             if p:IsA("ProximityPrompt") then
-                                prompt = p
-                                break
+                                table.insert(promptList, p)
                             end
                         end
                         
-                        if not prompt or not obj.Parent then
+                        if #promptList == 0 or not obj.Parent then
                             openedDoors[obj] = true
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                -- Teleport thẳng vào chính giữa phía sau gốc cây / cửa, đứng thẳng tự nhiên
                                 hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -3.5)
                                 
-                                -- Ép buộc mở cửa siêu tốc lập tức bằng nhiều phương thức mạng ngầm (Bypass hoàn toàn độ trễ khi không nhìn thấy nút)
                                 pcall(function()
-                                    if prompt then
+                                    for _, prompt in ipairs(promptList) do
                                         prompt.MaxActivationDistance = 999999
                                         prompt.HoldDuration = 0
                                         fireproximityprompt(prompt)
-                                        -- Kích hoạt thêm sự kiện tương tác gốc nếu prompt bị ẩn
-                                        if prompt.Parent and prompt.Parent:IsA("BasePart") then
-                                            firetouchinterest(hrp, prompt.Parent, 0)
-                                            firetouchinterest(hrp, prompt.Parent, 1)
-                                        end
+                                        fireproximityprompt(prompt)
+                                        fireproximityprompt(prompt)
                                     end
                                 end)
                                 
-                                task.wait(0.1)
-                                if prompt and not prompt.Parent then
+                                task.wait(0.03)
+                                local stillHasPrompt = false
+                                for _, p in pairs(obj:GetDescendants()) do
+                                    if p:IsA("ProximityPrompt") then
+                                        stillHasPrompt = true
+                                        break
+                                    end
+                                end
+                                
+                                if not stillHasPrompt then
                                     openedDoors[obj] = true
                                 end
                                 
@@ -260,5 +262,3 @@ task.spawn(function()
         end
     end
 end)
-
-print("Halloween Instant Teleport Farm đã khởi chạy hoàn hảo!")
