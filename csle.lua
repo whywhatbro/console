@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Stealth Farm
+-- The Strongest Battlegrounds - Halloween Ultimate Stealth & Speed Farm
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -7,8 +7,8 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenStealthGui") then
-    CoreGui.TSBHalloweenStealthGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenUltimateSpeedGui") then
+    CoreGui.TSBHalloweenUltimateSpeedGui:Destroy()
 end
 
 -- Chống AFK
@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenStealthGui"
+screenGui.Name = "beta1"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -51,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Stealth Farm"
+title.Text = "Halloween Ultimate Speed Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -109,17 +109,17 @@ local function createFeatureToggle(name, posY, key)
         if settings[key] then
             btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Text = name .. ": [BẬT]"
+            btn.Text = name .. "[BẬT]"
         else
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-            btn.Text = name .. ": [TẮT]"
+            btn.Text = name .. "[TẮT]"
         end
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Nằm Ngang Ổn Định)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Ẩn Trong Gốc Cây)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Clusters + Ngửa Mặt)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Quick Mở Tức Thì)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -138,7 +138,7 @@ local validCandies = {
 
 local openedDoors = {}
 
--- Luồng cố định trạng thái noclip vĩnh viễn và giữ nhân vật nằm ngang mượt mà khi nhặt kẹo
+-- Cố định trạng thái noclip vĩnh viễn và đóng băng trọng lực
 RunService.Stepped:Connect(function()
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -149,47 +149,70 @@ RunService.Stepped:Connect(function()
         end
         local humanoid = char:FindFirstChildOfClass("Humanoid")
         if humanoid then
-            humanoid.PlatformStand = true -- Đóng băng trạng thái vật lý để tránh bị rơi hay giật giật
+            humanoid.PlatformStand = true
         end
     end
 end)
 
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.03) -- Tốc độ quét cực nhanh gần như tức thời
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. ƯU TIÊN SỐ 1: Auto Nhặt Kẹo (Sắp xếp theo khoảng cách gần nhất, nằm ngang sát mặt đất, cố định không giật)
+            -- 1. AUTO NHẶT KẸO THÔNG MINH (Quét cụm nhiều kẹo nhất trong bán kính 30 studs, ngửa mặt dưới đất)
             if settings.autoCandy then
-                local targetCandy = nil
-                local shortestDist = math.huge
+                local bestCandyCenter = nil
+                local maxCandiesInCluster = 0
                 
+                -- Thu thập toàn bộ kẹo hợp lệ
+                local allCandies = {}
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
                         local pos = obj.Position
                         local isForbiddenArea = (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100)
-                        
                         if not isForbiddenArea then
-                            local dist = (pos - hrp.Position).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                targetCandy = obj
-                            end
+                            table.insert(allCandies, obj)
                         end
                     end
                 end
                 
-                if targetCandy then
-                    -- Nằm ngang sát mặt đất (CFrame quay ngang 90 độ trục X) để mở rộng diện tích chạm kẹo và cố định không giật
-                    hrp.CFrame = targetCandy.CFrame * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
-                    task.wait(0.15)
+                -- Tìm viên kẹo có mật độ xung quanh (trong bán kính 30 studs) cao nhất để ưu tiên hốt trọn cụm
+                for _, candy in ipairs(allCandies) do
+                    local count = 0
+                    for _, other in ipairs(allCandies) do
+                        if (candy.Position - other.Position).Magnitude <= 30 then
+                            count = count + 1
+                        end
+                    end
+                    if count > maxCandiesInCluster then
+                        maxCandiesInCluster = count
+                        bestCandyCenter = candy
+                    end
+                end
+                
+                -- Nếu không tìm thấy cụm, lấy viên kẹo gần nhất
+                if not bestCandyCenter and #allCandies > 0 then
+                    local minDist = math.huge
+                    for _, candy in ipairs(allCandies) do
+                        local dist = (candy.Position - hrp.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            bestCandyCenter = candy
+                        end
+                    end
+                end
+                
+                if bestCandyCenter then
+                    -- Teleport siêu nhanh, nằm dưới mặt đất ngửa mặt lên trời (xoay trục X -90 độ)
+                    hrp.CFrame = bestCandyCenter.CFrame * CFrame.new(0, -2, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                    task.wait(0.05)
                     continue
                 end
             end
             
-            -- 2. ƯU TIÊN SỐ 2: Auto Gõ Cửa (Ẩn sâu vào gốc cây / thân cây phía sau cửa, né hoàn toàn góc nhìn bên phải)
+            -- 2. AUTO GÕ CỬA (Quick mở tức thời, chuẩn chính giữa gốc cây, không lệch trái/phải, không bị kẹt)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -202,20 +225,24 @@ task.spawn(function()
                             end
                         end
                         
+                        -- Nếu cửa đã biến mất hoặc không còn prompt thì đánh dấu xong luôn
                         if not prompt or not obj.Parent then
                             openedDoors[obj] = true
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                -- Dịch chuyển lùi sâu vào bên trong thân cây / gốc cây phía sau cửa để hoàn toàn tàng hình, không bị lộ
-                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -4)
+                                -- Đứng chuẩn chính giữa và lùi thẳng vào trong tâm gốc cây (trục Z âm), tàng hình tuyệt đối không bị lộ
+                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -3.5)
+                                
                                 pcall(function()
                                     prompt.MaxActivationDistance = 999999
                                     prompt.HoldDuration = 0
+                                    -- Kích hoạt ép buộc tức thì liên tục không chờ đợi
+                                    fireproximityprompt(prompt)
                                     fireproximityprompt(prompt)
                                 end)
                                 
-                                task.wait(0.4)
+                                task.wait(0.15)
                                 if not prompt.Parent then
                                     openedDoors[obj] = true
                                 end
@@ -232,4 +259,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Stealth Farm đã hoạt động mượt mà hoàn hảo!")
+print("Halloween Ultimate Speed Farm đã hoạt động cực kỳ mượt mà và thông minh!")
