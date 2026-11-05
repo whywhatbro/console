@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBCandy"
+screenGui.Name = "CANDY BETA"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -113,13 +113,13 @@ local function createFeatureToggle(name, posY, key)
         else
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-            btn.Text = name .. "[BẬT]" == name .. "[BẬT]" and name .. "[TẮT]"
+            btn.Text = name .. "[ON]" == name .. "[ON]" and name .. "[OFF]"
         end
     end)
 end
 
-createFeatureToggle("candy farm)", 50, "autoCandy")
-createFeatureToggle("automatic doors)", 105, "autoDoor")
+createFeatureToggle("candy farm)", 50, ("autoCandy")
+createFeatureToggle("automatic doors)", 105, ("autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
