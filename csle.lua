@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Event All-In-One Farm Script
+-- The Strongest Battlegrounds - Halloween Master Farm (ESP Highlight + Tracer + Auto)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -8,16 +8,16 @@ local camera = Workspace.CurrentCamera
 local player = Players.LocalPlayer
 
 -- Xóa UI cũ nếu có
-if CoreGui:FindFirstChild("TSBHalloweenMasterGui") then
-    CoreGui.TSBHalloweenMasterGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenUltimateGui") then
+    CoreGui.TSBHalloweenUltimateGui:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenMasterGui"
+screenGui.Name = "TSBHalloweenUltimateGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
--- Nút mở/đóng Menu tổng
+-- Nút mở/đóng Menu
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 50, 0, 50)
 toggleBtn.Position = UDim2.new(0, 20, 0, 150)
@@ -47,7 +47,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "TSB Halloween Master Farm"
+title.Text = "Halloween Ultimate Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 13
 title.Font = Enum.Font.SourceSansBold
@@ -81,7 +81,7 @@ toggleBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
 end)
 
--- Trạng thái các tính năng
+-- Trạng thái tính năng
 local settings = {
     espBoss = false,
     autoBoss = false,
@@ -89,7 +89,7 @@ local settings = {
     autoDoor = false
 }
 
--- Hàm tạo các nút chức năng trong menu
+-- Tạo các nút toggle
 local function createFeatureToggle(name, posY, key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 45)
@@ -119,24 +119,27 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("ESP Boss penyta", 50, "espBoss")
+createFeatureToggle("ESP Viền & Line Boss", 50, "espBoss")
 createFeatureToggle("Auto Đánh Boss penyta", 105, "autoBoss")
 createFeatureToggle("Auto Nhặt Kẹo", 160, "autoCandy")
 createFeatureToggle("Auto Gõ Cửa (DOOR 1 NEW)", 215, "autoDoor")
 
--- Thẻ hiển thị ESP cho Boss
-local bossTag = Instance.new("TextLabel")
-bossTag.Size = UDim2.new(0, 200, 0, 30)
-bossTag.AnchorPoint = Vector2.new(0.5, 0.5)
-bossTag.BackgroundTransparency = 1
-bossTag.TextColor3 = Color3.fromRGB(255, 165, 0)
-bossTag.TextStrokeTransparency = 0.5
-bossTag.TextSize = 14
-bossTag.Font = Enum.Font.SourceSansBold
-bossTag.Visible = false
-bossTag.Parent = screenGui
+-- Tạo ESP Highlight (Viền sáng) và Line (Đường chỉ)
+local bossHighlight = Instance.new("Highlight")
+bossHighlight.Name = "PenytaHighlight"
+bossHighlight.FillColor = Color3.fromRGB(255, 140, 0)
+bossHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+bossHighlight.FillTransparency = 0.5
+bossHighlight.OutlineTransparency = 0
+bossHighlight.Parent = CoreGui
 
--- Danh sách tên kẹo hợp lệ
+-- Tạo đường Line chỉ đường
+local tracerLine = Drawing.new("Line")
+tracerLine.Visible = false
+tracerLine.Color = Color3.fromRGB(255, 140, 0)
+tracerLine.Thickness = 2
+tracerLine.Transparency = 1
+
 local validCandies = {
     ["DarkOrangeCandy2"] = true,
     ["OrangeCandy1"] = true,
@@ -147,40 +150,47 @@ local validCandies = {
     ["BloxRoll"] = true
 }
 
--- Vòng lặp xử lý tất cả tính năng theo thời gian thực
-RunService.Stepped:Connect(function()
+-- Vòng lặp chính xử lý tính năng
+RunService.RenderStepped:Connect(function()
     local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if not char or not char:FindFirstChild("HumanoidRootPart") then 
+        bossHighlight.Adornee = nil
+        tracerLine.Visible = false
+        return 
+    end
     local hrp = char.HumanoidRootPart
     
-    local bossModel = Workspace:FindFirstChild("penyta")
-    local bossPart = bossModel and (bossModel:FindFirstChild("HumanoidRootPart") or bossModel.PrimaryPart)
+    -- Tìm kiếm boss "penyta" trực tiếp trong Workspace hoặc các thư mục con
+    local bossModel = Workspace:FindFirstChild("penyta", true)
+    local bossPart = bossModel and (bossModel:FindFirstChild("HumanoidRootPart") or bossModel.PrimaryPart or bossModel:FindFirstChildOfClass("BasePart"))
     local bossHumanoid = bossModel and bossModel:FindFirstChildOfClass("Humanoid")
     
-    -- 1. Xử lý ESP Boss
-    if settings.espBoss and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
-        local vector, onScreen = camera:WorldToViewportPoint(bossPart.Position + Vector3.new(0, 3, 0))
+    -- 1. Xử lý ESP (Highlight viền sáng + Line chỉ đến boss)
+    if settings.espBoss and bossModel and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
+        bossHighlight.Adornee = bossModel
+        
+        local vector, onScreen = camera:WorldToViewportPoint(bossPart.Position)
         if onScreen then
-            local dist = math.floor((bossPart.Position - hrp.Position).Magnitude)
-            bossTag.Position = UDim2.new(0, vector.X, 0, vector.Y)
-            bossTag.Text = "🎃 PENYTA BOSS 🎃\n[" .. dist .. " studs]"
-            bossTag.Visible = true
+            tracerLine.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y) -- Xuất phát từ chân màn hình
+            tracerLine.To = Vector2.new(vector.X, vector.Y)
+            tracerLine.Visible = true
         else
-            bossTag.Visible = false
+            tracerLine.Visible = false
         end
     else
-        bossTag.Visible = false
+        bossHighlight.Adornee = nil
+        tracerLine.Visible = false
     end
     
     -- 2. Xử lý Auto Đánh Boss penyta
-    if settings.autoBoss and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
+    if settings.autoBoss and bossModel and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
         hrp.CFrame = bossPart.CFrame * CFrame.new(0, 0, 3)
         pcall(function()
             game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
             task.wait(0.05)
             game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
         end)
-        return -- Ưu tiên xử lý boss trước
+        return
     end
     
     -- 3. Xử lý Auto Nhặt Kẹo
@@ -198,7 +208,7 @@ RunService.Stepped:Connect(function()
     if settings.autoDoor then
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj.Name == "DOOR 1 NEW" then
-                local targetPart = obj:FindFirstChild("RightDoor") or obj:FindFirstChild("LeftDoor") or obj:FindFirstChildOfClass("BasePart")
+                local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                 if targetPart then
                     hrp.CFrame = targetPart.CFrame + Vector3.new(0, 2, 3)
                     local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or targetPart:FindFirstChildOfClass("ProximityPrompt")
@@ -213,4 +223,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("TSB Halloween Master Farm đã khởi động thành công!")
+print("Halloween Ultimate Script đã được cập nhật thành công!")
