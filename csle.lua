@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Final Boss Fixed)
+-- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Deep Search Fixed)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -167,16 +167,32 @@ local validCandies = {
     ["BloxyDrops"] = true
 }
 
--- Hàm quét tìm đúng mô hình boss "penyta" dựa trên thông tin thực tế
+-- Hàm quét tìm kiếm boss tối ưu qua tất cả các con của Workspace và các thư mục dịch vụ con
 local function getBossTarget()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name == "penyta" and obj:IsA("Model") then
-            local rootPart = obj:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                return obj, rootPart
+    -- Kiểm tra trực tiếp các thư mục phổ biến trong Workspace trước để tăng tốc độ
+    for _, child in pairs(Workspace:GetChildren()) do
+        if child.Name == "penyta" and child:IsA("Model") then
+            local root = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart or child:FindFirstChildOfClass("BasePart")
+            if root then return child, root end
+        end
+        -- Kiểm tra trong các folder con (như Live, Enemies, Monsters, v.v.)
+        if child:IsA("Folder") or child:IsA("Model") then
+            local subPenyta = child:FindFirstChild("penyta")
+            if subPenyta and subPenyta:IsA("Model") then
+                local root = subPenyta:FindFirstChild("HumanoidRootPart") or subPenyta.PrimaryPart or subPenyta:FindFirstChildOfClass("BasePart")
+                if root then return subPenyta, root end
             end
         end
     end
+    
+    -- Quét toàn bộ diện rộng nếu không tìm thấy ở thư mục ngoài
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name == "penyta" and obj:IsA("Model") then
+            local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+            if root then return obj, root end
+        end
+    end
+    
     return nil, nil
 end
 
@@ -213,7 +229,7 @@ task.spawn(function()
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. Auto Đánh Boss penyta (Đã fix chuẩn theo Model penyta & HumanoidRootPart)
+            -- 1. Auto Đánh Boss penyta
             if settings.autoBoss then
                 local bossModel, bossPart = getBossTarget()
                 if bossModel and bossPart then
@@ -270,4 +286,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Ultimate Master Script (Final Fixed) đã sẵn sàng hoạt động tuyệt đối!")
+print("Halloween Ultimate Master Script (Deep Search Fixed) đã sẵn sàng!")
