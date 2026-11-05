@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Speed Farm (Direct Fast Teleport)
+-- The Strongest Battlegrounds - Halloween Ultimate Speed & Multi-Side Door Farm
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -7,8 +7,8 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenSpeedMasterGui") then
-    CoreGui.TSBHalloweenSpeedMasterGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenUltimateSpeedGui") then
+    CoreGui.TSBHalloweenUltimateSpeedGui:Destroy()
 end
 
 -- Chống AFK
@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenSpeedMasterGui"
+screenGui.Name = "TSBHalloweenUltimateSpeedGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -51,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Speed Master Farm"
+title.Text = "Halloween Speed Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -118,8 +118,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Tốc Độ Tối Đa)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Force Instant)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Tốc Độ Cao)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Đổi Trái Phải + Tín Hiệu Liên Tục)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -137,22 +137,7 @@ local validCandies = {
 }
 
 local openedDoors = {}
-
--- Cố định noclip và chống rơi
-RunService.Stepped:Connect(function()
-    local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = true
-        end
-    end
-end)
+local doorSideToggle = false
 
 task.spawn(function()
     while true do
@@ -161,7 +146,7 @@ task.spawn(function()
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. AUTO NHẶT KẸO (Ưu tiên tốc độ tối đa, tele thẳng vào viên kẹo, không chìm đất không xoay người)
+            -- 1. AUTO NHẶT KẸO (Chỉ lấy tọa độ chân chạm vào kẹo, không xoay người, không ngã, tốc độ cao)
             if settings.autoCandy then
                 local bestCandyCenter = nil
                 local maxCandiesInCluster = 0
@@ -202,14 +187,14 @@ task.spawn(function()
                 end
                 
                 if bestCandyCenter then
-                    -- Teleport thẳng đứng chuẩn xác ngay vị trí kẹo với tốc độ chớp nhoáng
-                    hrp.CFrame = bestCandyCenter.CFrame
+                    -- Teleport đặt chân đúng tâm viên kẹo, giữ nguyên tư thế đứng thẳng không nằm ngã
+                    hrp.CFrame = bestCandyCenter.CFrame + Vector3.new(0, 3, 0)
                     task.wait(0.02)
                     continue
                 end
             end
             
-            -- 2. AUTO GÕ CỬA (Teleport vào sau gốc cây và ép mở siêu tốc)
+            -- 2. AUTO GÕ CỬA (Đổi qua lại giữa bên trái và bên phải liên tục kết hợp gửi tín hiệu dồn dập)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -226,19 +211,23 @@ task.spawn(function()
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -3.5)
+                                -- Đổi qua lại liên tục giữa lệch trái và lệch phải để không bị kẹt một chỗ
+                                doorSideToggle = not doorSideToggle
+                                local sideOffset = doorSideToggle and CFrame.new(-2, 0, -2) or CFrame.new(2, 0, -2)
+                                hrp.CFrame = targetPart.CFrame * sideOffset
                                 
-                                pcall(function()
-                                    for _, prompt in ipairs(promptList) do
-                                        prompt.MaxActivationDistance = 999999
-                                        prompt.HoldDuration = 0
-                                        fireproximityprompt(prompt)
-                                        fireproximityprompt(prompt)
-                                        fireproximityprompt(prompt)
-                                    end
-                                end)
+                                -- Gửi liên tục hàng loạt tín hiệu kích hoạt dồn dập không ngừng nghỉ trong vòng lặp ngắn
+                                for i = 1, 5 do
+                                    pcall(function()
+                                        for _, prompt in ipairs(promptList) do
+                                            prompt.MaxActivationDistance = 999999
+                                            prompt.HoldDuration = 0
+                                            fireproximityprompt(prompt)
+                                        end
+                                    end)
+                                    task.wait(0.01)
+                                end
                                 
-                                task.wait(0.03)
                                 local stillHasPrompt = false
                                 for _, p in pairs(obj:GetDescendants()) do
                                     if p:IsA("ProximityPrompt") then
@@ -262,3 +251,5 @@ task.spawn(function()
         end
     end
 end)
+
+print("Halloween Speed & Multi-Side Door Farm đã khởi chạy!")
