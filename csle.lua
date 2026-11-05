@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Deep Search Fixed)
+-- The Strongest Battlegrounds - Halloween Master Farm (Optimized & Stealth)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -8,29 +8,22 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local camera = Workspace.CurrentCamera
 local player = Players.LocalPlayer
 
--- Xóa UI cũ nếu có
-if CoreGui:FindFirstChild("TSBHalloweenUltimateMasterGui") then
-    CoreGui.TSBHalloweenUltimateMasterGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenOptimizedGui") then
+    CoreGui.TSBHalloweenOptimizedGui:Destroy()
 end
 
 -- Chống AFK
-local connection
-connection = player.Idled:Connect(function()
+player.Idled:Connect(function()
     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
     task.wait(0.1)
     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-    local vu = game:GetService("VirtualUser")
-    vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenUltimateMasterGui"
+screenGui.Name = "TSBHalloweenOptimizedGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
--- Nút mở/đóng Menu
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 50, 0, 50)
 toggleBtn.Position = UDim2.new(0, 20, 0, 150)
@@ -44,7 +37,6 @@ local cornerBtn = Instance.new("UICorner")
 cornerBtn.CornerRadius = UDim.new(1, 0)
 cornerBtn.Parent = toggleBtn
 
--- Khung Menu Chính
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 280, 0, 310)
 mainFrame.Position = UDim2.new(0.5, -140, 0.5, -155)
@@ -60,7 +52,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Ultimate Master Farm"
+title.Text = "Halloween Optimized Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -70,7 +62,6 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = title
 
--- Khóa xoay màn hình khi chạm vào Menu
 local isInteracting = false
 mainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -94,10 +85,7 @@ toggleBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
 end)
 
--- Trạng thái các tính năng
 local settings = {
-    espBoss = false,
-    autoBoss = false,
     autoCandy = false,
     autoDoor = false
 }
@@ -131,26 +119,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("ESP Viền & Line Boss", 50, "espBoss")
-createFeatureToggle("Auto Đánh Boss penyta", 105, "autoBoss")
-createFeatureToggle("Auto Nhặt Kẹo Toàn Diện", 160, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (DOOR 1 NEW)", 215, "autoDoor")
-
--- Tạo ESP Highlight cho Boss
-local bossHighlight = Instance.new("Highlight")
-bossHighlight.Name = "PenytaUltimateHighlight"
-bossHighlight.FillColor = Color3.fromRGB(255, 140, 0)
-bossHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-bossHighlight.FillTransparency = 0.4
-bossHighlight.OutlineTransparency = 0
-bossHighlight.Parent = CoreGui
-
--- Tạo đường Line chỉ đường
-local tracerLine = Drawing.new("Line")
-tracerLine.Visible = false
-tracerLine.Color = Color3.fromRGB(255, 140, 0)
-tracerLine.Thickness = 2
-tracerLine.Transparency = 1
+createFeatureToggle("Auto Nhặt Kẹo (Ưu Tiên)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Thông Minh)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -167,116 +137,89 @@ local validCandies = {
     ["BloxyDrops"] = true
 }
 
--- Hàm quét tìm kiếm boss tối ưu qua tất cả các con của Workspace và các thư mục dịch vụ con
-local function getBossTarget()
-    -- Kiểm tra trực tiếp các thư mục phổ biến trong Workspace trước để tăng tốc độ
-    for _, child in pairs(Workspace:GetChildren()) do
-        if child.Name == "penyta" and child:IsA("Model") then
-            local root = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart or child:FindFirstChildOfClass("BasePart")
-            if root then return child, root end
-        end
-        -- Kiểm tra trong các folder con (như Live, Enemies, Monsters, v.v.)
-        if child:IsA("Folder") or child:IsA("Model") then
-            local subPenyta = child:FindFirstChild("penyta")
-            if subPenyta and subPenyta:IsA("Model") then
-                local root = subPenyta:FindFirstChild("HumanoidRootPart") or subPenyta.PrimaryPart or subPenyta:FindFirstChildOfClass("BasePart")
-                if root then return subPenyta, root end
-            end
-        end
-    end
-    
-    -- Quét toàn bộ diện rộng nếu không tìm thấy ở thư mục ngoài
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name == "penyta" and obj:IsA("Model") then
-            local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-            if root then return obj, root end
-        end
-    end
-    
-    return nil, nil
-end
+-- Lưu trữ danh sách cửa đã mở/hoàn thành để không lặp lại
+local openedDoors = {}
 
--- ================= ESP THREAD =================
-RunService.RenderStepped:Connect(function()
-    if not settings.espBoss then
-        bossHighlight.Adornee = nil
-        tracerLine.Visible = false
-        return
-    end
-    
-    local bossModel, bossPart = getBossTarget()
-    if bossModel and bossPart then
-        bossHighlight.Adornee = bossModel
-        local vector, onScreen = camera:WorldToViewportPoint(bossPart.Position)
-        if onScreen then
-            tracerLine.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-            tracerLine.To = Vector2.new(vector.X, vector.Y)
-            tracerLine.Visible = true
-        else
-            tracerLine.Visible = false
-        end
-    else
-        bossHighlight.Adornee = nil
-        tracerLine.Visible = false
-    end
-end)
-
--- ================= AUTO FARM THREAD =================
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.05) -- Tốc độ quét cực nhanh
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. Auto Đánh Boss penyta
-            if settings.autoBoss then
-                local bossModel, bossPart = getBossTarget()
-                if bossModel and bossPart then
-                    hrp.CFrame = bossPart.CFrame * CFrame.new(0, 0, 3)
-                    pcall(function()
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                        task.wait(0.02)
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    end)
-                    continue
-                end
-            end
-            
-            -- 2. Auto Nhặt Kẹo Toàn Diện
-            if settings.autoCandy then
-                local foundItem = false
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
-                        hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
-                        foundItem = true
-                        task.wait(0.1)
-                        break
+            -- Ép nhân vật chìm xuống dưới đất (Stealth / Ẩn thân tránh bị phát hiện)
+            pcall(function()
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
                     end
                 end
-                if foundItem then continue end
+            end)
+            
+            -- 1. ƯU TIÊN SỐ 1: Auto Nhặt Kẹo (Tìm kẹo gần nhất, nằm trong map, loại bỏ khu vực cấm như rạp xiếc)
+            local targetCandy = nil
+            local shortestDist = math.huge
+            
+            if settings.autoCandy then
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
+                        -- Kiểm tra loại bỏ khu vực rạp xiếc hoặc vùng bị cấm bay vào
+                        local pos = obj.Position
+                        local isForbiddenArea = (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100) -- Vùng ví dụ của rạp xiếc
+                        
+                        if not isForbiddenArea then
+                            local dist = (pos - hrp.Position).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                targetCandy = obj
+                            end
+                        end
+                    end
+                end
+                
+                if targetCandy then
+                    hrp.CFrame = targetCandy.CFrame + Vector3.new(0, -3, 0) -- Teleport chìm dưới đất sát kẹo
+                    task.wait(0.02)
+                    continue -- Bỏ qua các việc khác để tập trung hốt sạch kẹo gần nhất ngay lập tức
+                end
             end
             
-            -- 3. Auto Gõ Cửa (DOOR 1 NEW)
+            -- 2. ƯU TIÊN SỐ 2: Auto Gõ Cửa (Chỉ gõ cửa chưa mở, tự động bỏ qua khi đã hoàn thành)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj.Name == "DOOR 1 NEW" then
-                        local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
-                        if targetPart then
-                            hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 2)
-                            for _, prompt in pairs(obj:GetDescendants()) do
-                                if prompt:IsA("ProximityPrompt") then
-                                    pcall(function()
-                                        prompt.MaxActivationDistance = 999999
-                                        prompt.HoldDuration = 0
-                                        fireproximityprompt(prompt)
-                                    end)
-                                end
+                    if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
+                        -- Kiểm tra xem cửa còn prompt hoặc chưa bị biến mất/chìm xuống đất
+                        local prompt = nil
+                        for _, p in pairs(obj:GetDescendants()) do
+                            if p:IsA("ProximityPrompt") then
+                                prompt = p
+                                break
                             end
-                            foundDoor = true
-                            task.wait(1.5)
-                            break
+                        end
+                        
+                        -- Nếu không còn prompt hoặc cửa đã mở/biến mất thì đánh dấu bỏ qua luôn
+                        if not prompt or not obj.Parent then
+                            openedDoors[obj] = true
+                        else
+                            local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
+                            if targetPart then
+                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, -3, 2) -- Đứng dưới đất sát cửa
+                                pcall(function()
+                                    prompt.MaxActivationDistance = 999999
+                                    prompt.HoldDuration = 0
+                                    fireproximityprompt(prompt)
+                                end)
+                                
+                                -- Nếu sau một nhịp kiểm tra thấy prompt biến mất thì đánh dấu cửa này đã xong
+                                task.wait(0.3)
+                                if not prompt.Parent then
+                                    openedDoors[obj] = true
+                                end
+                                
+                                foundDoor = true
+                                break
+                            end
                         end
                     end
                 end
@@ -286,4 +229,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Ultimate Master Script (Deep Search Fixed) đã sẵn sàng!")
+print("Halloween Optimized Master Script đã hoạt động hoàn hảo!")
