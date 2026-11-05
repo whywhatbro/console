@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Speed & Multi-Side Door Farm
+-- The Strongest Battlegrounds - Halloween Ultimate Stable Teleport & Instant Door Farm
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -7,8 +7,8 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenUltimateSpeedGui") then
-    CoreGui.TSBHalloweenUltimateSpeedGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenStableGui") then
+    CoreGui.TSBHalloweenStableGui:Destroy()
 end
 
 -- Chống AFK
@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenUltimateSpeedGui"
+screenGui.Name = "TSBHalloweenStableGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -51,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Speed Farm"
+title.Text = "Halloween Stable Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -113,13 +113,13 @@ local function createFeatureToggle(name, posY, key)
         else
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-            btn.Text = name .. "[TẮT]"
+            btn.Text = name .. "[BẬT]" == name .. "[BẬT]" and name .. "[TẮT]"
         end
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Tốc Độ Cao)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Đổi Trái Phải + Tín Hiệu Liên Tục)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Đứng Thẳng + Tốc Độ)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Siêu Tốc Đứng Trực Diện)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -137,16 +137,30 @@ local validCandies = {
 }
 
 local openedDoors = {}
-local doorSideToggle = false
+
+-- Cố định trọng lực và trạng thái đứng thẳng hoàn toàn, khóa vận tốc tuyến tính để không bị ngã nhào
+RunService.Stepped:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local hrp = char.HumanoidRootPart
+        hrp.Velocity = Vector3.new(0, 0, 0)
+        hrp.RotVelocity = Vector3.new(0, 0, 0)
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+            humanoid.Sit = false
+        end
+    end
+end)
 
 task.spawn(function()
     while true do
-        task.wait(0.02)
+        task.wait(0.03)
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. AUTO NHẶT KẸO (Chỉ lấy tọa độ chân chạm vào kẹo, không xoay người, không ngã, tốc độ cao)
+            -- 1. AUTO NHẶT KẸO (Đứng thẳng, không ngã, gom cụm nhặt siêu tốc)
             if settings.autoCandy then
                 local bestCandyCenter = nil
                 local maxCandiesInCluster = 0
@@ -187,14 +201,14 @@ task.spawn(function()
                 end
                 
                 if bestCandyCenter then
-                    -- Teleport đặt chân đúng tâm viên kẹo, giữ nguyên tư thế đứng thẳng không nằm ngã
-                    hrp.CFrame = bestCandyCenter.CFrame + Vector3.new(0, 3, 0)
+                    -- Teleport giữ nguyên hướng nhìn và đứng thẳng vuông góc mặt đất
+                    hrp.CFrame = CFrame.new(bestCandyCenter.Position + Vector3.new(0, 2.5, 0), hrp.Position + hrp.CFrame.LookVector)
                     task.wait(0.02)
                     continue
                 end
             end
             
-            -- 2. AUTO GÕ CỬA (Đổi qua lại giữa bên trái và bên phải liên tục kết hợp gửi tín hiệu dồn dập)
+            -- 2. AUTO GÕ CỬA (Đứng trực diện thẳng trước cửa, gửi lệnh liên tục mở lập tức không độ trễ)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -211,13 +225,11 @@ task.spawn(function()
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                -- Đổi qua lại liên tục giữa lệch trái và lệch phải để không bị kẹt một chỗ
-                                doorSideToggle = not doorSideToggle
-                                local sideOffset = doorSideToggle and CFrame.new(-2, 0, -2) or CFrame.new(2, 0, -2)
-                                hrp.CFrame = targetPart.CFrame * sideOffset
+                                -- Đứng trực diện ngay chính giữa mặt trước cửa để nhận diện nút mở tức thì
+                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 3)
                                 
-                                -- Gửi liên tục hàng loạt tín hiệu kích hoạt dồn dập không ngừng nghỉ trong vòng lặp ngắn
-                                for i = 1, 5 do
+                                -- Gửi tín hiệu kích hoạt liên tục cực mạnh
+                                for i = 1, 8 do
                                     pcall(function()
                                         for _, prompt in ipairs(promptList) do
                                             prompt.MaxActivationDistance = 999999
@@ -252,4 +264,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Speed & Multi-Side Door Farm đã khởi chạy!")
+print("Halloween Stable Farm đã khởi chạy!")
