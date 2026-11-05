@@ -1,26 +1,29 @@
--- The Strongest Battlegrounds - Advanced Object & Candy Inspector
+-- The Strongest Battlegrounds - Halloween Event All-In-One Farm Script
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local camera = Workspace.CurrentCamera
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBAdvancedInspector") then
-    CoreGui.TSBAdvancedInspector:Destroy()
+-- Xóa UI cũ nếu có
+if CoreGui:FindFirstChild("TSBHalloweenMasterGui") then
+    CoreGui.TSBHalloweenMasterGui:Destroy()
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBAdvancedInspector"
+screenGui.Name = "TSBHalloweenMasterGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
--- Nút mở Inspector nâng cao
+-- Nút mở/đóng Menu tổng
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 50, 0, 50)
-toggleBtn.Position = UDim2.new(0, 20, 0, 320)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
-toggleBtn.Text = "🔬"
-toggleBtn.TextSize = 24
+toggleBtn.Position = UDim2.new(0, 20, 0, 150)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+toggleBtn.Text = "🎃"
+toggleBtn.TextSize = 26
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleBtn.Parent = screenGui
 
@@ -28,117 +31,186 @@ local cornerBtn = Instance.new("UICorner")
 cornerBtn.CornerRadius = UDim.new(1, 0)
 cornerBtn.Parent = toggleBtn
 
-local infoFrame = Instance.new("Frame")
-infoFrame.Size = UDim2.new(0, 340, 0, 220)
-infoFrame.Position = UDim2.new(0.5, -170, 0.5, -110)
-infoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-infoFrame.Visible = false
-infoFrame.Parent = screenGui
+-- Khung Menu Chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 280, 0, 310)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -155)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
 
 local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 10)
-frameCorner.Parent = mainFrame or infoFrame
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = mainFrame
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "Advanced Candy & Object Inspector"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.Text = "TSB Halloween Master Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 12
-title.Parent = infoFrame
+title.TextSize = 13
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mainFrame
 
-local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1, -20, 1, -85)
-infoText.Position = UDim2.new(0, 10, 0, 35)
-infoText.BackgroundTransparency = 1
-infoText.Text = "Đứng gần viên kẹo rồi bấm nút 'Quét Vật Thể Gần Nhất' bên dưới."
-infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
-infoText.TextSize = 11
-infoText.TextWrapped = true
-infoText.TextXAlignment = Enum.TextXAlignment.Left
-infoText.TextYAlignment = Enum.TextYAlignment.Top
-infoText.Parent = infoFrame
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = title
 
--- Nút thực hiện quét bán kính quanh người chơi
-local scanBtn = Instance.new("TextButton")
-scanBtn.Size = UDim2.new(1, -20, 0, 35)
-scanBtn.Position = UDim2.new(0, 10, 1, -75)
-scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-scanBtn.Text = "Quét Vật Thể Xung Quanh (Bán kính 15 studs)"
-scanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-scanBtn.TextSize = 11
-scanBtn.Parent = infoFrame
-
-local copyBtn = Instance.new("TextButton")
-copyBtn.Size = UDim2.new(1, -20, 0, 30)
-copyBtn.Position = UDim2.new(0, 10, 1, -35)
-copyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
-copyBtn.Text = "Copy Tên Vật Thể Tìm Được"
-copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-copyBtn.TextSize = 11
-copyBtn.Parent = infoFrame
-
-local isOpen = false
-toggleBtn.MouseButton1Click:Connect(function()
-    isOpen = not isOpen
-    infoFrame.Visible = isOpen
+-- Khóa xoay màn hình khi chạm vào Menu
+local isInteracting = false
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isInteracting = true
+    end
 end)
 
-local foundTargetName = ""
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isInteracting = false
+    end
+end)
 
-scanBtn.MouseButton1Click:Connect(function()
+RunService.RenderStepped:Connect(function()
+    if isInteracting and mainFrame.Visible then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+
+toggleBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Trạng thái các tính năng
+local settings = {
+    espBoss = false,
+    autoBoss = false,
+    autoCandy = false,
+    autoDoor = false
+}
+
+-- Hàm tạo các nút chức năng trong menu
+local function createFeatureToggle(name, posY, key)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 45)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = name .. ": [TẮT]"
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Parent = mainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        settings[key] = not settings[key]
+        if settings[key] then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Text = name .. ": [BẬT]"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.Text = name .. ": [TẮT]"
+        end
+    end)
+end
+
+createFeatureToggle("ESP Boss penyta", 50, "espBoss")
+createFeatureToggle("Auto Đánh Boss penyta", 105, "autoBoss")
+createFeatureToggle("Auto Nhặt Kẹo", 160, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (DOOR 1 NEW)", 215, "autoDoor")
+
+-- Thẻ hiển thị ESP cho Boss
+local bossTag = Instance.new("TextLabel")
+bossTag.Size = UDim2.new(0, 200, 0, 30)
+bossTag.AnchorPoint = Vector2.new(0.5, 0.5)
+bossTag.BackgroundTransparency = 1
+bossTag.TextColor3 = Color3.fromRGB(255, 165, 0)
+bossTag.TextStrokeTransparency = 0.5
+bossTag.TextSize = 14
+bossTag.Font = Enum.Font.SourceSansBold
+bossTag.Visible = false
+bossTag.Parent = screenGui
+
+-- Danh sách tên kẹo hợp lệ
+local validCandies = {
+    ["DarkOrangeCandy2"] = true,
+    ["OrangeCandy1"] = true,
+    ["OrangeCandy2"] = true,
+    ["OrangeCandy3"] = true,
+    ["DarkOrangeCandy4"] = true,
+    ["MrBloxBar"] = true,
+    ["BloxRoll"] = true
+}
+
+-- Vòng lặp xử lý tất cả tính năng theo thời gian thực
+RunService.Stepped:Connect(function()
     local char = player.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local hrp = char.HumanoidRootPart
     
-    local closestObj = nil
-    local shortestDist = 15 -- Bán kính quét 15 studs quanh bạn
+    local bossModel = Workspace:FindFirstChild("penyta")
+    local bossPart = bossModel and (bossModel:FindFirstChild("HumanoidRootPart") or bossModel.PrimaryPart)
+    local bossHumanoid = bossModel and bossModel:FindFirstChildOfClass("Humanoid")
     
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj ~= hrp then
-            local dist = (obj.Position - hrp.Position).Magnitude
-            if dist <= shortestDist then
-                -- Lọc bỏ nhân vật người chơi để tập trung vào kẹo/vật phẩm rớt
-                local isPlayerPart = false
-                for _, p in pairs(Players:GetPlayers()) do
-                    if p.Character and obj:IsDescendantOf(p.Character) then
-                        isPlayerPart = true
-                        break
-                    end
-                end
-                
-                if not isPlayerPart and obj.Name ~= "Terrain" then
-                    shortestDist = dist
-                    closestObj = obj
-                end
+    -- 1. Xử lý ESP Boss
+    if settings.espBoss and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
+        local vector, onScreen = camera:WorldToViewportPoint(bossPart.Position + Vector3.new(0, 3, 0))
+        if onScreen then
+            local dist = math.floor((bossPart.Position - hrp.Position).Magnitude)
+            bossTag.Position = UDim2.new(0, vector.X, 0, vector.Y)
+            bossTag.Text = "🎃 PENYTA BOSS 🎃\n[" .. dist .. " studs]"
+            bossTag.Visible = true
+        else
+            bossTag.Visible = false
+        end
+    else
+        bossTag.Visible = false
+    end
+    
+    -- 2. Xử lý Auto Đánh Boss penyta
+    if settings.autoBoss and bossPart and bossHumanoid and bossHumanoid.Health > 0 then
+        hrp.CFrame = bossPart.CFrame * CFrame.new(0, 0, 3)
+        pcall(function()
+            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            task.wait(0.05)
+            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        end)
+        return -- Ưu tiên xử lý boss trước
+    end
+    
+    -- 3. Xử lý Auto Nhặt Kẹo
+    if settings.autoCandy then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and validCandies[obj.Name] then
+                hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
+                task.wait(0.1)
+                return
             end
         end
     end
     
-    if closestObj then
-        foundTargetName = closestObj.Name
-        local parentName = closestObj.Parent and closestObj.Parent.Name or "None"
-        local className = closestObj.ClassName
-        
-        infoText.Text = "Đã tìm thấy vật thể gần nhất:\n" ..
-                        "- Tên (Name): " .. foundTargetName .. "\n" ..
-                        "- Parent: " .. parentName .. "\n" ..
-                        "- Loại (Class): " .. className .. "\n" ..
-                        "- Khoảng cách: " .. math.floor(shortestDist) .. " studs"
-    else
-        infoText.Text = "Không tìm thấy vật thể nào trong bán kính 15 studs!"
+    -- 4. Xử lý Auto Gõ Cửa (DOOR 1 NEW)
+    if settings.autoDoor then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name == "DOOR 1 NEW" then
+                local targetPart = obj:FindFirstChild("RightDoor") or obj:FindFirstChild("LeftDoor") or obj:FindFirstChildOfClass("BasePart")
+                if targetPart then
+                    hrp.CFrame = targetPart.CFrame + Vector3.new(0, 2, 3)
+                    local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or targetPart:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then
+                        fireproximityprompt(prompt)
+                    end
+                    task.wait(1.5)
+                    return
+                end
+            end
+        end
     end
 end)
 
-copyBtn.MouseButton1Click:Connect(function()
-    if foundTargetName ~= "" then
-        pcall(function()
-            setclipboard(foundTargetName)
-        end)
-        copyBtn.Text = "Đã Copy: " .. foundTargetName
-        task.wait(1.5)
-        copyBtn.Text = "Copy Tên Vật Thể Tìm Được"
-    end
-end)
-
-print("Advanced Inspector đã sẵn sàng!")
+print("TSB Halloween Master Farm đã khởi động thành công!")
