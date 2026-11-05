@@ -1,15 +1,14 @@
--- The Strongest Battlegrounds - Halloween Ultimate Tween & Stealth Farm
+-- The Strongest Battlegrounds - Halloween Ultimate Instant Teleport Farm
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenTweenMasterGui") then
-    CoreGui.TSBHalloweenTweenMasterGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenInstantGui") then
+    CoreGui.TSBHalloweenInstantGui:Destroy()
 end
 
 -- Chống AFK
@@ -20,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenTweenMasterGui"
+screenGui.Name = "TSBHalloweenInstantGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -52,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Tween Master Farm"
+title.Text = "Halloween Instant Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -119,8 +118,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Tween Nằm Ngửa)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Tween Vào Gốc Cây)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Instant Teleport)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Instant Bypass)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -138,7 +137,6 @@ local validCandies = {
 }
 
 local openedDoors = {}
-local isTweening = false
 
 -- Cố định trạng thái noclip vĩnh viễn và đóng băng trọng lực để cơ thể không bị rơi
 RunService.Stepped:Connect(function()
@@ -160,10 +158,10 @@ task.spawn(function()
     while true do
         task.wait(0.05)
         local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and not isTweening then
+        if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. AUTO NHẶT KẸO (Tween lướt cực nhanh, chìm dưới đất, nằm ngửa mặt lên trời nhặt cụm đông nhất)
+            -- 1. AUTO NHẶT KẸO (Teleport siêu tốc ngửa mặt dưới đất, gom cụm đông nhất)
             if settings.autoCandy then
                 local bestCandyCenter = nil
                 local maxCandiesInCluster = 0
@@ -204,24 +202,14 @@ task.spawn(function()
                 end
                 
                 if bestCandyCenter then
-                    isTweening = true
-                    -- Vị đích: Chìm xuống dưới viên kẹo 2 studs, xoay nằm ngửa mặt lên trời (trục X -90 độ)
-                    local targetCFrame = bestCandyCenter.CFrame * CFrame.new(0, -2, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                    local distance = (hrp.Position - bestCandyCenter.Position).Magnitude
-                    -- Tốc độ cực cao (tính theo thời gian tween ngắn dần theo khoảng cách, gần như dịch chuyển)
-                    local tweenSpeed = math.clamp(distance / 450, 0.05, 0.25)
-                    
-                    local tweenInfo = TweenInfo.new(tweenSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-                    local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-                    tween:Play()
-                    
-                    tween.Completed:Wait()
-                    isTweening = false
+                    -- Teleport tức thì, chìm dưới đất 2 studs, ngửa mặt lên trời (trục X -90 độ)
+                    hrp.CFrame = bestCandyCenter.CFrame * CFrame.new(0, -2, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                    task.wait(0.05)
                     continue
                 end
             end
             
-            -- 2. AUTO GÕ CỬA (Tween lướt mượt vào chính giữa đằng sau cánh cửa/gốc cây, đứng thẳng lên và mở tức thì)
+            -- 2. AUTO GÕ CỬA (Teleport thẳng vào tâm gốc cây, cưỡng chế kích hoạt prompt tức thì bất chấp khoảng cách hay trạng thái nút)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -239,34 +227,28 @@ task.spawn(function()
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                isTweening = true
-                                -- Vị trí đích: Đứng thẳng tự nhiên ở chính giữa phía sau gốc cây/cánh cửa (trục Z âm), tàng hình tuyệt đối
-                                local targetCFrame = targetPart.CFrame * CFrame.new(0, 0, -3.5)
-                                local distance = (hrp.Position - targetPart.Position).Magnitude
-                                local tweenSpeed = math.clamp(distance / 450, 0.08, 0.3)
+                                -- Teleport thẳng vào chính giữa phía sau gốc cây / cửa, đứng thẳng tự nhiên
+                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -3.5)
                                 
-                                local tweenInfo = TweenInfo.new(tweenSpeed, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-                                tween:Play()
-                                
-                                tween.Completed:Wait()
-                                
-                                -- Kích hoạt mở cửa siêu tốc tức thì bất chấp mọi giới hạn khoảng cách hay góc nhìn
+                                -- Ép buộc mở cửa siêu tốc lập tức bằng nhiều phương thức mạng ngầm (Bypass hoàn toàn độ trễ khi không nhìn thấy nút)
                                 pcall(function()
                                     if prompt then
                                         prompt.MaxActivationDistance = 999999
                                         prompt.HoldDuration = 0
                                         fireproximityprompt(prompt)
-                                        fireproximityprompt(prompt)
+                                        -- Kích hoạt thêm sự kiện tương tác gốc nếu prompt bị ẩn
+                                        if prompt.Parent and prompt.Parent:IsA("BasePart") then
+                                            firetouchinterest(hrp, prompt.Parent, 0)
+                                            firetouchinterest(hrp, prompt.Parent, 1)
+                                        end
                                     end
                                 end)
                                 
-                                task.wait(0.2)
+                                task.wait(0.1)
                                 if prompt and not prompt.Parent then
                                     openedDoors[obj] = true
                                 end
                                 
-                                isTweening = false
                                 foundDoor = true
                                 break
                             end
@@ -279,4 +261,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Tween Master Farm đã khởi chạy hoàn hảo!")
+print("Halloween Instant Teleport Farm đã khởi chạy hoàn hảo!")
