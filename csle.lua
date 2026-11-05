@@ -1,10 +1,11 @@
--- The Strongest Battlegrounds - CANDY BETA Farm
+-- The Strongest Battlegrounds - CANDY BETA Farm (With Penyta Boss Teleport & Notification)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
 if CoreGui:FindFirstChild("TSBCandyBetaGui") then
@@ -37,8 +38,8 @@ cornerBtn.CornerRadius = UDim.new(1, 0)
 cornerBtn.Parent = toggleBtn
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 260)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -130)
+mainFrame.Size = UDim2.new(0, 280, 0, 315)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -157)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.Visible = false
@@ -86,7 +87,8 @@ end)
 
 local settings = {
     autoCandy = false,
-    autoDoor = false
+    autoDoor = false,
+    autoBoss = false
 }
 
 local function createFeatureToggle(name, posY, key)
@@ -120,6 +122,7 @@ end
 
 createFeatureToggle("CANDY FARM", 50, "autoCandy")
 createFeatureToggle("AUTOMATIC DOOR", 105, "autoDoor")
+createFeatureToggle("PENGUIN BOSS TELEPORT", 160, "autoBoss")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -137,6 +140,17 @@ local validCandies = {
 }
 
 local openedDoors = {}
+local bossNotified = false
+
+local function getBossTarget()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name == "penyta" and obj:IsA("Model") then
+            local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+            if root then return obj, root end
+        end
+    end
+    return nil, nil
+end
 
 RunService.Stepped:Connect(function()
     local char = player.Character
@@ -150,6 +164,23 @@ RunService.Stepped:Connect(function()
             humanoid.Sit = false
         end
     end
+    
+    -- Hệ thống thông báo khi Boss Penyta xuất hiện
+    local bossModel, bossPart = getBossTarget()
+    if bossModel and bossPart then
+        if not bossNotified then
+            bossNotified = true
+            pcall(function()
+                StarterGui:SetCore("SendNotification", {
+                    Title = "CANDY BETA",
+                    Text = "Boss Penyta (Bí Ngô) đã xuất hiện!",
+                    Duration = 5
+                })
+            end)
+        end
+    else
+        bossNotified = false
+    end
 end)
 
 task.spawn(function()
@@ -158,6 +189,20 @@ task.spawn(function()
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
+            
+            -- PENGUIN BOSS TELEPORT (Ưu tiên số 1 khi bật)
+            if settings.autoBoss then
+                local bossModel, bossPart = getBossTarget()
+                if bossModel and bossPart then
+                    hrp.CFrame = bossPart.CFrame * CFrame.new(0, 0, 3)
+                    pcall(function()
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                        task.wait(0.02)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    end)
+                    continue
+                end
+            end
             
             -- CANDY FARM
             if settings.autoCandy then
@@ -260,4 +305,4 @@ task.spawn(function()
     end
 end)
 
-print("CANDY BETA Loaded Successfully!")
+print("CANDY BETA (With Boss Features) Loaded Successfully!")
