@@ -1,9 +1,10 @@
--- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Cleaned Candy List)
+-- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Fixed & Anti-AFK)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local camera = Workspace.CurrentCamera
 local player = Players.LocalPlayer
 
@@ -11,6 +12,18 @@ local player = Players.LocalPlayer
 if CoreGui:FindFirstChild("TSBHalloweenUltimateMasterGui") then
     CoreGui.TSBHalloweenUltimateMasterGui:Destroy()
 end
+
+-- Chống AFK (Anti-AFK)
+local connection
+connection = player.Idled:Connect(function()
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+    task.wait(0.1)
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+    local vu = game:GetService("VirtualUser")
+    vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TSBHalloweenUltimateMasterGui"
@@ -139,7 +152,6 @@ tracerLine.Color = Color3.fromRGB(255, 140, 0)
 tracerLine.Thickness = 2
 tracerLine.Transparency = 1
 
--- Danh sách chỉ chứa đúng các loại kẹo sự kiện (Đã loại bỏ Part và tạp chất)
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
     ["DarkOrangeCandy2"] = true,
@@ -155,12 +167,12 @@ local validCandies = {
     ["BloxyDrops"] = true
 }
 
--- Hàm tìm kiếm boss chuẩn xác
+-- Hàm quét tìm kiếm boss mở rộng (tìm theo cả Model, Part, hoặc con của các thư mục khác)
 local function getBossTarget()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj.Name == "penyta" then
             if obj:IsA("Model") then
-                local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
                 if rootPart then return obj, rootPart end
             end
         elseif obj.Name == "HumanoidRootPart" and obj.Parent and obj.Parent.Name == "penyta" then
@@ -203,15 +215,15 @@ task.spawn(function()
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. Auto Đánh Boss
+            -- 1. Auto Đánh Boss (Dùng CFrame và kích hoạt tấn công trực tiếp)
             if settings.autoBoss then
                 local bossModel, bossPart = getBossTarget()
                 if bossModel and bossPart then
                     hrp.CFrame = bossPart.CFrame * CFrame.new(0, 0, 3)
                     pcall(function()
-                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                         task.wait(0.02)
-                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                     end)
                     continue
                 end
@@ -231,7 +243,7 @@ task.spawn(function()
                 if foundItem then continue end
             end
             
-            -- 3. Auto Gõ Cửa
+            -- 3. Auto Gõ Cửa (Bỏ qua cản trở bằng cách bật MaxActivationDistance và ép kích hoạt liên tục)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -242,8 +254,9 @@ task.spawn(function()
                             for _, prompt in pairs(obj:GetDescendants()) do
                                 if prompt:IsA("ProximityPrompt") then
                                     pcall(function()
-                                        fireproximityprompt(prompt)
+                                        prompt.MaxActivationDistance = 999999 -- Không sợ bị che khuất khoảng cách
                                         prompt.HoldDuration = 0
+                                        fireproximityprompt(prompt)
                                     end)
                                 end
                             end
@@ -259,4 +272,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Ultimate Master Script (Cleaned) đã sẵn sàng!")
+print("Halloween Ultimate Master Script (Fixed & Anti-AFK) đã sẵn sàng!")
