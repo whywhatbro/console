@@ -19,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenStableGui"
+screenGui.Name = "TSBCandy"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -118,8 +118,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Đứng Thẳng + Tốc Độ)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Siêu Tốc Đứng Trực Diện)", 105, "autoDoor")
+createFeatureToggle("candy farm)", 50, "autoCandy")
+createFeatureToggle("automatic doors)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
