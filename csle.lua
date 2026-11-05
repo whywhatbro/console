@@ -1,4 +1,4 @@
--- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Fixed & Anti-AFK)
+-- The Strongest Battlegrounds - Halloween Ultimate Master Farm (Final Boss Fixed)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -13,7 +13,7 @@ if CoreGui:FindFirstChild("TSBHalloweenUltimateMasterGui") then
     CoreGui.TSBHalloweenUltimateMasterGui:Destroy()
 end
 
--- Chống AFK (Anti-AFK)
+-- Chống AFK
 local connection
 connection = player.Idled:Connect(function()
     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
@@ -167,16 +167,14 @@ local validCandies = {
     ["BloxyDrops"] = true
 }
 
--- Hàm quét tìm kiếm boss mở rộng (tìm theo cả Model, Part, hoặc con của các thư mục khác)
+-- Hàm quét tìm đúng mô hình boss "penyta" dựa trên thông tin thực tế
 local function getBossTarget()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name == "penyta" then
-            if obj:IsA("Model") then
-                local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-                if rootPart then return obj, rootPart end
+        if obj.Name == "penyta" and obj:IsA("Model") then
+            local rootPart = obj:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                return obj, rootPart
             end
-        elseif obj.Name == "HumanoidRootPart" and obj.Parent and obj.Parent.Name == "penyta" then
-            return obj.Parent, obj
         end
     end
     return nil, nil
@@ -215,7 +213,7 @@ task.spawn(function()
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- 1. Auto Đánh Boss (Dùng CFrame và kích hoạt tấn công trực tiếp)
+            -- 1. Auto Đánh Boss penyta (Đã fix chuẩn theo Model penyta & HumanoidRootPart)
             if settings.autoBoss then
                 local bossModel, bossPart = getBossTarget()
                 if bossModel and bossPart then
@@ -243,7 +241,7 @@ task.spawn(function()
                 if foundItem then continue end
             end
             
-            -- 3. Auto Gõ Cửa (Bỏ qua cản trở bằng cách bật MaxActivationDistance và ép kích hoạt liên tục)
+            -- 3. Auto Gõ Cửa (DOOR 1 NEW)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -254,7 +252,7 @@ task.spawn(function()
                             for _, prompt in pairs(obj:GetDescendants()) do
                                 if prompt:IsA("ProximityPrompt") then
                                     pcall(function()
-                                        prompt.MaxActivationDistance = 999999 -- Không sợ bị che khuất khoảng cách
+                                        prompt.MaxActivationDistance = 999999
                                         prompt.HoldDuration = 0
                                         fireproximityprompt(prompt)
                                     end)
@@ -272,4 +270,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Ultimate Master Script (Fixed & Anti-AFK) đã sẵn sàng!")
+print("Halloween Ultimate Master Script (Final Fixed) đã sẵn sàng hoạt động tuyệt đối!")
