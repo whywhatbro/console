@@ -1,15 +1,14 @@
--- The Strongest Battlegrounds - Halloween Master Farm (Optimized & Stealth)
+-- The Strongest Battlegrounds - Halloween Ultimate Stealth Farm
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local camera = Workspace.CurrentCamera
 local player = Players.LocalPlayer
 
-if CoreGui:FindFirstChild("TSBHalloweenOptimizedGui") then
-    CoreGui.TSBHalloweenOptimizedGui:Destroy()
+if CoreGui:FindFirstChild("TSBHalloweenStealthGui") then
+    CoreGui.TSBHalloweenStealthGui:Destroy()
 end
 
 -- Chống AFK
@@ -20,7 +19,7 @@ player.Idled:Connect(function()
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TSBHalloweenOptimizedGui"
+screenGui.Name = "TSBHalloweenStealthGui"
 screenGui.Parent = CoreGui
 screenGui.ResetOnSpawn = false
 
@@ -38,8 +37,8 @@ cornerBtn.CornerRadius = UDim.new(1, 0)
 cornerBtn.Parent = toggleBtn
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 310)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -155)
+mainFrame.Size = UDim2.new(0, 280, 0, 260)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -130)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.Visible = false
@@ -52,7 +51,7 @@ frameCorner.Parent = mainFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "Halloween Optimized Farm"
+title.Text = "Halloween Stealth Farm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 11
 title.Font = Enum.Font.SourceSansBold
@@ -119,8 +118,8 @@ local function createFeatureToggle(name, posY, key)
     end)
 end
 
-createFeatureToggle("Auto Nhặt Kẹo (Ưu Tiên)", 50, "autoCandy")
-createFeatureToggle("Auto Gõ Cửa (Thông Minh)", 105, "autoDoor")
+createFeatureToggle("Auto Nhặt Kẹo (Nằm Ngang Ổn Định)", 50, "autoCandy")
+createFeatureToggle("Auto Gõ Cửa (Ẩn Trong Gốc Cây)", 105, "autoDoor")
 
 local validCandies = {
     ["DarkOrangeCandy1"] = true,
@@ -137,35 +136,40 @@ local validCandies = {
     ["BloxyDrops"] = true
 }
 
--- Lưu trữ danh sách cửa đã mở/hoàn thành để không lặp lại
 local openedDoors = {}
+
+-- Luồng cố định trạng thái noclip vĩnh viễn và giữ nhân vật nằm ngang mượt mà khi nhặt kẹo
+RunService.Stepped:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = true -- Đóng băng trạng thái vật lý để tránh bị rơi hay giật giật
+        end
+    end
+end)
 
 task.spawn(function()
     while true do
-        task.wait(0.05) -- Tốc độ quét cực nhanh
+        task.wait(0.1)
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- Ép nhân vật chìm xuống dưới đất (Stealth / Ẩn thân tránh bị phát hiện)
-            pcall(function()
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end)
-            
-            -- 1. ƯU TIÊN SỐ 1: Auto Nhặt Kẹo (Tìm kẹo gần nhất, nằm trong map, loại bỏ khu vực cấm như rạp xiếc)
-            local targetCandy = nil
-            local shortestDist = math.huge
-            
+            -- 1. ƯU TIÊN SỐ 1: Auto Nhặt Kẹo (Sắp xếp theo khoảng cách gần nhất, nằm ngang sát mặt đất, cố định không giật)
             if settings.autoCandy then
+                local targetCandy = nil
+                local shortestDist = math.huge
+                
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
-                        -- Kiểm tra loại bỏ khu vực rạp xiếc hoặc vùng bị cấm bay vào
                         local pos = obj.Position
-                        local isForbiddenArea = (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100) -- Vùng ví dụ của rạp xiếc
+                        local isForbiddenArea = (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100)
                         
                         if not isForbiddenArea then
                             local dist = (pos - hrp.Position).Magnitude
@@ -178,18 +182,18 @@ task.spawn(function()
                 end
                 
                 if targetCandy then
-                    hrp.CFrame = targetCandy.CFrame + Vector3.new(0, -3, 0) -- Teleport chìm dưới đất sát kẹo
-                    task.wait(0.02)
-                    continue -- Bỏ qua các việc khác để tập trung hốt sạch kẹo gần nhất ngay lập tức
+                    -- Nằm ngang sát mặt đất (CFrame quay ngang 90 độ trục X) để mở rộng diện tích chạm kẹo và cố định không giật
+                    hrp.CFrame = targetCandy.CFrame * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                    task.wait(0.15)
+                    continue
                 end
             end
             
-            -- 2. ƯU TIÊN SỐ 2: Auto Gõ Cửa (Chỉ gõ cửa chưa mở, tự động bỏ qua khi đã hoàn thành)
+            -- 2. ƯU TIÊN SỐ 2: Auto Gõ Cửa (Ẩn sâu vào gốc cây / thân cây phía sau cửa, né hoàn toàn góc nhìn bên phải)
             if settings.autoDoor then
                 local foundDoor = false
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
-                        -- Kiểm tra xem cửa còn prompt hoặc chưa bị biến mất/chìm xuống đất
                         local prompt = nil
                         for _, p in pairs(obj:GetDescendants()) do
                             if p:IsA("ProximityPrompt") then
@@ -198,21 +202,20 @@ task.spawn(function()
                             end
                         end
                         
-                        -- Nếu không còn prompt hoặc cửa đã mở/biến mất thì đánh dấu bỏ qua luôn
                         if not prompt or not obj.Parent then
                             openedDoors[obj] = true
                         else
                             local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
                             if targetPart then
-                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, -3, 2) -- Đứng dưới đất sát cửa
+                                -- Dịch chuyển lùi sâu vào bên trong thân cây / gốc cây phía sau cửa để hoàn toàn tàng hình, không bị lộ
+                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, -4)
                                 pcall(function()
                                     prompt.MaxActivationDistance = 999999
                                     prompt.HoldDuration = 0
                                     fireproximityprompt(prompt)
                                 end)
                                 
-                                -- Nếu sau một nhịp kiểm tra thấy prompt biến mất thì đánh dấu cửa này đã xong
-                                task.wait(0.3)
+                                task.wait(0.4)
                                 if not prompt.Parent then
                                     openedDoors[obj] = true
                                 end
@@ -229,4 +232,4 @@ task.spawn(function()
     end
 end)
 
-print("Halloween Optimized Master Script đã hoạt động hoàn hảo!")
+print("Halloween Stealth Farm đã hoạt động mượt mà hoàn hảo!")
