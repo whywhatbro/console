@@ -1,4 +1,4 @@
--- TSB CANDY BETA - Tabs (Farm & Act), Priority Queue, Safe Zone & Auto-Save Config
+-- TSB CANDY BETA - Fast Candy Farm, Boss Posture Sync, Smart M1/Skill Combo & Auto-Noclip
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -71,7 +71,6 @@ screenGui.IgnoreGuiInset = true
 screenGui.DisplayOrder = 999999
 screenGui.Parent = playerGui
 
--- Chấm trạng thái Pumpkin phía trên thanh nộ
 local statusContainer = Instance.new("Frame")
 statusContainer.Size = UDim2.new(0, 110, 0, 22)
 statusContainer.Position = UDim2.new(0.5, -55, 1, -145)
@@ -96,7 +95,6 @@ statusText.Font = Enum.Font.SourceSansBold
 statusText.TextXAlignment = Enum.TextXAlignment.Left
 statusText.Parent = statusContainer
 
--- Nút bật/tắt menu
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 50, 0, 50)
 toggleBtn.Position = UDim2.new(0, 20, 0, 150)
@@ -108,7 +106,6 @@ toggleBtn.ZIndex = 10
 toggleBtn.Parent = screenGui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
--- Khung menu chính
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 290, 0, 340)
 mainFrame.Position = UDim2.new(0.5, -145, 0.5, -170)
@@ -130,7 +127,6 @@ title.ZIndex = 6
 title.Parent = mainFrame
 Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
 
--- Thanh chuyển Tab (Farm / Act)
 local tabFarmBtn = Instance.new("TextButton")
 tabFarmBtn.Size = UDim2.new(0.5, -12, 0, 28)
 tabFarmBtn.Position = UDim2.new(0, 10, 0, 42)
@@ -182,7 +178,6 @@ end
 tabFarmBtn.MouseButton1Click:Connect(function() switchTab("Farm") end)
 tabActBtn.MouseButton1Click:Connect(function() switchTab("Act") end)
 
--- Kéo thả menu trên Mobile
 local dragging, dragInput, dragStart, startPos
 title.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -213,8 +208,6 @@ end)
 -- ==========================================
 -- 3. NỘI DUNG TAB FARM
 -- ==========================================
-local toggleRefs = {}
-
 local function paintToggleBtn(btn, name, state)
     btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     btn.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 100)
@@ -231,7 +224,6 @@ local function createFarmToggle(name, posY, key)
     btn.Parent = farmContainer
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
     paintToggleBtn(btn, name, config[key])
-    toggleRefs[key] = { btn = btn, name = name }
 
     btn.MouseButton1Click:Connect(function()
         config[key] = not config[key]
@@ -435,7 +427,7 @@ end
 refreshActUI()
 
 -- ==========================================
--- 5. LOGIC GAMEPLAY, SAFE ZONE & PRIORITY QUEUE
+-- 5. NOCLIP, FAST CANDY & SMART COMBAT
 -- ==========================================
 local validCandies = {
     ["DarkOrangeCandy1"] = true, ["DarkOrangeCandy2"] = true,
@@ -447,6 +439,39 @@ local validCandies = {
 }
 local openedDoors = {}
 local SAFE_SKY_CFRAME = CFrame.new(0, 950, 0)
+
+local isBossNoclipActive = false
+local savedCollideStates = {}
+
+local function setBossNoclip(enable)
+    local char = player.Character
+    if not char then return end
+
+    if enable then
+        if not isBossNoclipActive then
+            savedCollideStates = {}
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    savedCollideStates[part] = part.CanCollide
+                end
+            end
+            isBossNoclipActive = true
+        end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    elseif isBossNoclipActive then
+        for part, originalCollide in pairs(savedCollideStates) do
+            if part and part.Parent then
+                part.CanCollide = originalCollide
+            end
+        end
+        savedCollideStates = {}
+        isBossNoclipActive = false
+    end
+end
 
 local function getBossTarget()
     local live = Workspace:FindFirstChild("Live")
@@ -462,50 +487,34 @@ local function getBossTarget()
 end
 
 local function findBestCandy(hrp)
-    local allCandies = {}
-    for _, obj in pairs(Workspace:GetDescendants()) do
+    local bestCandy = nil
+    local bestScore = -math.huge
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
             local pos = obj.Position
             if not (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100) then
-                table.insert(allCandies, obj)
+                local dist = (pos - hrp.Position).Magnitude
+                local score = -dist
+                if dist <= 35 then
+                    score = score + 120
+                end
+                if score > bestScore then
+                    bestScore = score
+                    bestCandy = obj
+                end
             end
         end
     end
-    if #allCandies == 0 then return nil end
 
-    local bestCandy, maxCluster = nil, 0
-    for _, candy in ipairs(allCandies) do
-        local count = 0
-        for _, other in ipairs(allCandies) do
-            if (candy.Position - other.Position).Magnitude <= 30 then
-                count = count + 1
-            end
-        end
-        if count > maxCluster then
-            maxCluster = count
-            bestCandy = candy
-        end
-    end
-
-    if bestCandy then return bestCandy end
-
-    local minDist = math.huge
-    local nearest = nil
-    for _, candy in ipairs(allCandies) do
-        local dist = (candy.Position - hrp.Position).Magnitude
-        if dist < minDist then
-            minDist = dist
-            nearest = candy
-        end
-    end
-    return nearest
+    return bestCandy
 end
 
 local function findNextDoor()
-    for _, obj in pairs(Workspace:GetDescendants()) do
+    for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
             local promptList = {}
-            for _, p in pairs(obj:GetDescendants()) do
+            for _, p in ipairs(obj:GetDescendants()) do
                 if p:IsA("ProximityPrompt") then
                     table.insert(promptList, p)
                 end
@@ -534,14 +543,14 @@ local function fireGuiButton(guiObj)
         local pos, size = guiObj.AbsolutePosition, guiObj.AbsoluteSize
         local cx, cy = pos.X + size.X / 2, pos.Y + size.Y / 2
         VirtualInputManager:SendTouchEvent(1, 0, cx, cy)
-        task.wait(0.01)
+        task.wait(0.005)
         VirtualInputManager:SendTouchEvent(1, 2, cx, cy)
     end
 end
 
 local function triggerMobileM1()
     pcall(function()
-        for _, guiObj in pairs(playerGui:GetDescendants()) do
+        for _, guiObj in ipairs(playerGui:GetDescendants()) do
             if guiObj:IsA("GuiButton") and guiObj.Visible and not guiObj:IsDescendantOf(screenGui) then
                 local gName = string.lower(guiObj.Name)
                 local pName = guiObj.Parent and string.lower(guiObj.Parent.Name) or ""
@@ -569,7 +578,7 @@ local function triggerMobileSkill(slotStr)
         end
 
         local screenHeight = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize.Y or 800
-        for _, guiObj in pairs(playerGui:GetDescendants()) do
+        for _, guiObj in ipairs(playerGui:GetDescendants()) do
             if guiObj:IsA("GuiButton") and guiObj.Visible and not guiObj:IsDescendantOf(screenGui) and guiObj.AbsolutePosition.Y > (screenHeight * 0.6) then
                 local gName = guiObj.Name
                 local pName = guiObj.Parent and guiObj.Parent.Name or ""
@@ -601,37 +610,82 @@ RunService.Stepped:Connect(function()
     statusDot.BackgroundColor3 = (bossModel and bossPart) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(120, 120, 120)
 end)
 
--- Các hàm thực thi từng hành động (trả về true nếu đang thực thi mục tiêu, false nếu không còn mục tiêu để chuyển bước kế tiếp)
-local currentSkillIndex = 1
-local actionDelay = 0
+-- Trạng thái combo: 3 M1 -> 1 Skill cho tới khi hết vòng skill, sau đó spam M1 không giới hạn đến khi có skill lại
+local skillCycleIndex = 1
+local skillsUsedInCycle = 0
+local m1CountBeforeSkill = 0
+local m1CooldownTick = 0
+local skillCooldownTick = 0
+local SKILL_CYCLE_COOLDOWN_TICKS = 160 -- Thời gian chờ hồi lại vòng chiêu mới (~2.4s)
 
 local function runBossAction(hrp)
     local bossModel, bossPart = getBossTarget()
     if bossModel and bossPart then
+        setBossNoclip(true)
+
+        -- Gắn trực tiếp vào tâm thân và khớp tư thế/hướng của Boss (nằm/đứng/xoay đều bám theo)
         hrp.CFrame = bossPart.CFrame
-        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        triggerMobileM1()
-        actionDelay = actionDelay + 1
-        if actionDelay >= 18 then
-            actionDelay = 0
-            triggerMobileSkill(config.skillOrder[currentSkillIndex])
-            currentSkillIndex = currentSkillIndex % #config.skillOrder + 1
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+
+        local hasSkillsRemaining = (skillsUsedInCycle < #config.skillOrder)
+
+        if hasSkillsRemaining then
+            if m1CountBeforeSkill < 3 then
+                m1CooldownTick = m1CooldownTick + 1
+                if m1CooldownTick >= 3 then
+                    m1CooldownTick = 0
+                    triggerMobileM1()
+                    m1CountBeforeSkill = m1CountBeforeSkill + 1
+                end
+            else
+                skillCooldownTick = skillCooldownTick + 1
+                if skillCooldownTick >= 5 then
+                    skillCooldownTick = 0
+                    local slotToUse = config.skillOrder[skillCycleIndex]
+                    triggerMobileSkill(slotToUse)
+                    skillCycleIndex = (skillCycleIndex % #config.skillOrder) + 1
+                    skillsUsedInCycle = skillsUsedInCycle + 1
+                    m1CountBeforeSkill = 0
+                    if skillsUsedInCycle >= #config.skillOrder then
+                        skillCooldownTick = 0
+                    end
+                end
+            end
+        else
+            -- Hết vòng chiêu: spam M1 liên tục không giới hạn tới khi vòng chiêu hồi lại
+            triggerMobileM1()
+            skillCooldownTick = skillCooldownTick + 1
+            if skillCooldownTick >= SKILL_CYCLE_COOLDOWN_TICKS then
+                skillCooldownTick = 0
+                skillsUsedInCycle = 0
+                m1CountBeforeSkill = 0
+                m1CooldownTick = 0
+            end
         end
+
         return true
     end
+
+    setBossNoclip(false)
+    skillsUsedInCycle = 0
+    m1CountBeforeSkill = 0
     return false
 end
 
 local function runCandyAction(hrp)
+    setBossNoclip(false)
     local bestCandy = findBestCandy(hrp)
     if bestCandy then
-        hrp.CFrame = CFrame.new(bestCandy.Position + Vector3.new(0, 2.5, 0), hrp.Position + hrp.CFrame.LookVector)
+        hrp.CFrame = CFrame.new(bestCandy.Position + Vector3.new(0, 1.5, 0), bestCandy.Position + Vector3.new(0, 1.5, 0) + hrp.CFrame.LookVector)
+        hrp.AssemblyLinearVelocity = Vector3.zero
         return true
     end
     return false
 end
 
 local function runDoorAction(hrp)
+    setBossNoclip(false)
     local doorObj, targetPart, promptList = findNextDoor()
     if doorObj and targetPart then
         hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 3)
@@ -643,11 +697,11 @@ local function runDoorAction(hrp)
                     fireproximityprompt(prompt)
                 end
             end)
-            task.wait(0.01)
+            task.wait(0.005)
         end
 
         local stillHasPrompt = false
-        for _, p in pairs(doorObj:GetDescendants()) do
+        for _, p in ipairs(doorObj:GetDescendants()) do
             if p:IsA("ProximityPrompt") then
                 stillHasPrompt = true
                 break
@@ -674,7 +728,7 @@ end
 
 task.spawn(function()
     while true do
-        task.wait(0.03)
+        task.wait(0.015)
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -682,7 +736,6 @@ task.spawn(function()
                 local didWork = false
                 for _, item in ipairs(config.actionQueue) do
                     if item.enabled then
-                        -- Chỉ chuyển sang hành động tiếp theo khi hành động ưu tiên hiện tại trả về false (hết mục tiêu/đã xong)
                         if executeActionById(item.id, hrp) then
                             didWork = true
                             break
@@ -690,22 +743,28 @@ task.spawn(function()
                     end
                 end
                 if not didWork then
+                    setBossNoclip(false)
                     hrp.CFrame = SAFE_SKY_CFRAME
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                 end
                 continue
             end
 
-            -- Chế độ bật từng chức năng riêng lẻ ở tab Farm
+            local handled = false
             if config.autoBossCombat then
-                if runBossAction(hrp) then continue end
+                handled = runBossAction(hrp)
             end
-            if config.autoCandy then
-                if runCandyAction(hrp) then continue end
+            if not handled and config.autoCandy then
+                handled = runCandyAction(hrp)
             end
-            if config.autoDoor then
-                if runDoorAction(hrp) then continue end
+            if not handled and config.autoDoor then
+                handled = runDoorAction(hrp)
             end
+            if not handled then
+                setBossNoclip(false)
+            end
+        else
+            setBossNoclip(false)
         end
     end
 end)
