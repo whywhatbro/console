@@ -1,4 +1,4 @@
--- TSB CANDY BETA - Fast Candy Farm, Boss Posture Sync, Smart M1/Skill Combo & Auto-Noclip
+-- TSB CANDY BETA - Behind-Back Aim, Continuous Skill/M1 Spam & Pumpkin ESP
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -23,6 +23,7 @@ local config = {
     autoDoor = false,
     autoBossCombat = false,
     autoFarmAll = false,
+    espPumpkin = false,
     skillOrder = {"1", "2", "3", "4"},
     actionQueue = {
         { id = "candy", label = "Nhặt kẹo", enabled = true },
@@ -48,6 +49,7 @@ local function loadConfig()
                 if type(decoded.autoDoor) == "boolean" then config.autoDoor = decoded.autoDoor end
                 if type(decoded.autoBossCombat) == "boolean" then config.autoBossCombat = decoded.autoBossCombat end
                 if type(decoded.autoFarmAll) == "boolean" then config.autoFarmAll = decoded.autoFarmAll end
+                if type(decoded.espPumpkin) == "boolean" then config.espPumpkin = decoded.espPumpkin end
                 if type(decoded.skillOrder) == "table" and #decoded.skillOrder == 4 then
                     config.skillOrder = decoded.skillOrder
                 end
@@ -107,8 +109,8 @@ toggleBtn.Parent = screenGui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 290, 0, 340)
-mainFrame.Position = UDim2.new(0.5, -145, 0.5, -170)
+mainFrame.Size = UDim2.new(0, 290, 0, 375)
+mainFrame.Position = UDim2.new(0.5, -145, 0.5, -187)
 mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 mainFrame.BackgroundTransparency = 0.08
 mainFrame.Visible = true
@@ -216,7 +218,7 @@ end
 
 local function createFarmToggle(name, posY, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 34)
+    btn.Size = UDim2.new(1, -20, 0, 32)
     btn.Position = UDim2.new(0, 10, 0, posY)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 11
@@ -233,12 +235,13 @@ local function createFarmToggle(name, posY, key)
 end
 
 createFarmToggle("AUTO FARM ALL (ACT QUEUE)", 0, "autoFarmAll")
-createFarmToggle("CANDY FARM", 38, "autoCandy")
-createFarmToggle("AUTOMATIC DOOR", 76, "autoDoor")
+createFarmToggle("CANDY FARM", 36, "autoCandy")
+createFarmToggle("AUTOMATIC DOOR", 72, "autoDoor")
+createFarmToggle("PUMPKIN ESP", 108, "espPumpkin")
 
 local teleBossBtn = Instance.new("TextButton")
-teleBossBtn.Size = UDim2.new(1, -20, 0, 34)
-teleBossBtn.Position = UDim2.new(0, 10, 0, 114)
+teleBossBtn.Size = UDim2.new(1, -20, 0, 32)
+teleBossBtn.Position = UDim2.new(0, 10, 0, 144)
 teleBossBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
 teleBossBtn.Text = "TELEPORT TO PUMPKIN"
 teleBossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -248,11 +251,11 @@ teleBossBtn.ZIndex = 7
 teleBossBtn.Parent = farmContainer
 Instance.new("UICorner", teleBossBtn).CornerRadius = UDim.new(0, 7)
 
-createFarmToggle("AUTO PUMPKIN COMBAT", 152, "autoBossCombat")
+createFarmToggle("AUTO PUMPKIN COMBAT", 180, "autoBossCombat")
 
 local dropToggleBtn = Instance.new("TextButton")
 dropToggleBtn.Size = UDim2.new(1, -20, 0, 28)
-dropToggleBtn.Position = UDim2.new(0, 10, 0, 190)
+dropToggleBtn.Position = UDim2.new(0, 10, 0, 216)
 dropToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 dropToggleBtn.Text = "▼ Select Combat Skills Order"
 dropToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -264,7 +267,7 @@ Instance.new("UICorner", dropToggleBtn).CornerRadius = UDim.new(0, 7)
 
 local dropdownFrame = Instance.new("ScrollingFrame")
 dropdownFrame.Size = UDim2.new(1, -20, 0, 68)
-dropdownFrame.Position = UDim2.new(0, 10, 0, 220)
+dropdownFrame.Position = UDim2.new(0, 10, 0, 246)
 dropdownFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
 dropdownFrame.ScrollBarThickness = 4
 dropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 96)
@@ -427,7 +430,7 @@ end
 refreshActUI()
 
 -- ==========================================
--- 5. NOCLIP, FAST CANDY & SMART COMBAT
+-- 5. NOCLIP, PUMPKIN ESP, BEHIND-BACK AIM & SPAM
 -- ==========================================
 local validCandies = {
     ["DarkOrangeCandy1"] = true, ["DarkOrangeCandy2"] = true,
@@ -439,6 +442,7 @@ local validCandies = {
 }
 local openedDoors = {}
 local SAFE_SKY_CFRAME = CFrame.new(0, 950, 0)
+local BEHIND_DISTANCE = 4.5 -- Cách 1 bước sau lưng con Pumpkin
 
 local isBossNoclipActive = false
 local savedCollideStates = {}
@@ -484,6 +488,64 @@ local function getBossTarget()
         end
     end
     return nil, nil
+end
+
+-- Quản lý ESP Pumpkin (Highlight + BillboardGui hiển thị khoảng cách)
+local function clearPumpkinESP()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj.Name == "TSB_PumpkinESP_Highlight" or obj.Name == "TSB_PumpkinESP_Billboard" then
+            obj:Destroy()
+        end
+    end
+end
+
+local function updatePumpkinESP(bossModel, bossPart, playerHrp)
+    if not config.espPumpkin or not bossModel or not bossPart then
+        clearPumpkinESP()
+        return
+    end
+
+    local hl = bossModel:FindFirstChild("TSB_PumpkinESP_Highlight")
+    if not hl then
+        hl = Instance.new("Highlight")
+        hl.Name = "TSB_PumpkinESP_Highlight"
+        hl.FillColor = Color3.fromRGB(0, 255, 80)
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        hl.FillTransparency = 0.55
+        hl.OutlineTransparency = 0
+        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        hl.Parent = bossModel
+    end
+
+    local bb = bossPart:FindFirstChild("TSB_PumpkinESP_Billboard")
+    if not bb then
+        bb = Instance.new("BillboardGui")
+        bb.Name = "TSB_PumpkinESP_Billboard"
+        bb.Size = UDim2.new(0, 140, 0, 32)
+        bb.StudsOffset = Vector3.new(0, 4.2, 0)
+        bb.AlwaysOnTop = true
+        bb.Parent = bossPart
+
+        local txt = Instance.new("TextLabel")
+        txt.Name = "Label"
+        txt.Size = UDim2.new(1, 0, 1, 0)
+        txt.BackgroundTransparency = 1
+        txt.TextColor3 = Color3.fromRGB(0, 255, 80)
+        txt.TextStrokeTransparency = 0.2
+        txt.TextSize = 13
+        txt.Font = Enum.Font.SourceSansBold
+        txt.Parent = bb
+    end
+
+    local lbl = bb:FindFirstChild("Label")
+    if lbl then
+        local distText = ""
+        if playerHrp then
+            local studs = math.floor((bossPart.Position - playerHrp.Position).Magnitude)
+            distText = string.format(" [%dm]", studs)
+        end
+        lbl.Text = "PUMPKIN" .. distText
+    end
 end
 
 local function findBestCandy(hrp)
@@ -591,85 +653,65 @@ local function triggerMobileSkill(slotStr)
     end)
 end
 
+-- Tính toán vị trí đứng cách 1 bước sau lưng Boss và luôn hướng thẳng mặt vào lưng Boss
+local function getBehindBossCFrame(bossPart)
+    local bossCF = bossPart.CFrame
+    local behindPos = (bossCF * CFrame.new(0, 0, BEHIND_DISTANCE)).Position
+    return CFrame.lookAt(behindPos, bossPart.Position)
+end
+
 teleBossBtn.MouseButton1Click:Connect(function()
     local _, bossPart = getBossTarget()
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") and bossPart then
-        char.HumanoidRootPart.CFrame = bossPart.CFrame
+        char.HumanoidRootPart.CFrame = getBehindBossCFrame(bossPart)
     end
 end)
 
 RunService.Stepped:Connect(function()
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hum then
         hum.PlatformStand = false
         hum.Sit = false
     end
+
     local bossModel, bossPart = getBossTarget()
     statusDot.BackgroundColor3 = (bossModel and bossPart) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(120, 120, 120)
+    updatePumpkinESP(bossModel, bossPart, hrp)
 end)
 
--- Trạng thái combo: 3 M1 -> 1 Skill cho tới khi hết vòng skill, sau đó spam M1 không giới hạn đến khi có skill lại
+-- Spam M1 liên tục và xoay vòng kích hoạt ngay các skill đang sẵn sàng theo thứ tự
 local skillCycleIndex = 1
-local skillsUsedInCycle = 0
-local m1CountBeforeSkill = 0
-local m1CooldownTick = 0
-local skillCooldownTick = 0
-local SKILL_CYCLE_COOLDOWN_TICKS = 160 -- Thời gian chờ hồi lại vòng chiêu mới (~2.4s)
+local skillSpamTick = 0
 
 local function runBossAction(hrp)
     local bossModel, bossPart = getBossTarget()
     if bossModel and bossPart then
         setBossNoclip(true)
 
-        -- Gắn trực tiếp vào tâm thân và khớp tư thế/hướng của Boss (nằm/đứng/xoay đều bám theo)
-        hrp.CFrame = bossPart.CFrame
+        -- Bay bám sát sau lưng Boss 1 bước (4.5 studs) và khóa tâm ngắm thẳng vào lưng Boss
+        hrp.CFrame = getBehindBossCFrame(bossPart)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
 
-        local hasSkillsRemaining = (skillsUsedInCycle < #config.skillOrder)
+        -- Spam M1 liên tục
+        triggerMobileM1()
 
-        if hasSkillsRemaining then
-            if m1CountBeforeSkill < 3 then
-                m1CooldownTick = m1CooldownTick + 1
-                if m1CooldownTick >= 3 then
-                    m1CooldownTick = 0
-                    triggerMobileM1()
-                    m1CountBeforeSkill = m1CountBeforeSkill + 1
-                end
-            else
-                skillCooldownTick = skillCooldownTick + 1
-                if skillCooldownTick >= 5 then
-                    skillCooldownTick = 0
-                    local slotToUse = config.skillOrder[skillCycleIndex]
-                    triggerMobileSkill(slotToUse)
-                    skillCycleIndex = (skillCycleIndex % #config.skillOrder) + 1
-                    skillsUsedInCycle = skillsUsedInCycle + 1
-                    m1CountBeforeSkill = 0
-                    if skillsUsedInCycle >= #config.skillOrder then
-                        skillCooldownTick = 0
-                    end
-                end
-            end
-        else
-            -- Hết vòng chiêu: spam M1 liên tục không giới hạn tới khi vòng chiêu hồi lại
-            triggerMobileM1()
-            skillCooldownTick = skillCooldownTick + 1
-            if skillCooldownTick >= SKILL_CYCLE_COOLDOWN_TICKS then
-                skillCooldownTick = 0
-                skillsUsedInCycle = 0
-                m1CountBeforeSkill = 0
-                m1CooldownTick = 0
-            end
+        -- Xoay vòng kích hoạt liên tục tất cả skill trong danh sách ưu tiên (chiêu nào hồi là tung ngay)
+        skillSpamTick = skillSpamTick + 1
+        if skillSpamTick >= 4 then
+            skillSpamTick = 0
+            local slotToUse = config.skillOrder[skillCycleIndex]
+            triggerMobileSkill(slotToUse)
+            skillCycleIndex = (skillCycleIndex % #config.skillOrder) + 1
         end
 
         return true
     end
 
     setBossNoclip(false)
-    skillsUsedInCycle = 0
-    m1CountBeforeSkill = 0
     return false
 end
 
