@@ -1,19 +1,69 @@
--- TSB CANDY BETA - Guaranteed UI Render & Mobile Skill Fix
+-- TSB CANDY BETA - Tabs (Farm & Act), Priority Queue, Safe Zone & Auto-Save Config
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Xóa bản cũ nếu tồn tại
 if playerGui:FindFirstChild("TSBCandyBetaGui") then
     playerGui.TSBCandyBetaGui:Destroy()
 end
 
--- 1. KHỞI TẠO GIAO DIỆN NGAY LẬP TỨC VÀO PLAYERGUI
+-- ==========================================
+-- 1. CẤU HÌNH & TỰ ĐỘNG LƯU / TẢI SETTING
+-- ==========================================
+local CONFIG_FILE = "TSB_CandyBeta_Config.json"
+
+local config = {
+    autoCandy = false,
+    autoDoor = false,
+    autoBossCombat = false,
+    autoFarmAll = false,
+    skillOrder = {"1", "2", "3", "4"},
+    actionQueue = {
+        { id = "candy", label = "Nhặt kẹo", enabled = true },
+        { id = "boss",  label = "Đánh Pumpkin", enabled = true },
+        { id = "door",  label = "Gõ cửa nhà", enabled = true }
+    }
+}
+
+local function saveConfig()
+    pcall(function()
+        if writefile then
+            writefile(CONFIG_FILE, HttpService:JSONEncode(config))
+        end
+    end)
+end
+
+local function loadConfig()
+    pcall(function()
+        if isfile and readfile and isfile(CONFIG_FILE) then
+            local decoded = HttpService:JSONDecode(readfile(CONFIG_FILE))
+            if type(decoded) == "table" then
+                if type(decoded.autoCandy) == "boolean" then config.autoCandy = decoded.autoCandy end
+                if type(decoded.autoDoor) == "boolean" then config.autoDoor = decoded.autoDoor end
+                if type(decoded.autoBossCombat) == "boolean" then config.autoBossCombat = decoded.autoBossCombat end
+                if type(decoded.autoFarmAll) == "boolean" then config.autoFarmAll = decoded.autoFarmAll end
+                if type(decoded.skillOrder) == "table" and #decoded.skillOrder == 4 then
+                    config.skillOrder = decoded.skillOrder
+                end
+                if type(decoded.actionQueue) == "table" and #decoded.actionQueue == 3 then
+                    config.actionQueue = decoded.actionQueue
+                end
+            end
+        end
+    end)
+end
+
+loadConfig()
+
+-- ==========================================
+-- 2. GIAO DIỆN CHÍNH & THANH TRẠNG THÁI PUMPKIN
+-- ==========================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TSBCandyBetaGui"
 screenGui.ResetOnSpawn = false
@@ -21,7 +71,7 @@ screenGui.IgnoreGuiInset = true
 screenGui.DisplayOrder = 999999
 screenGui.Parent = playerGui
 
--- Thanh trạng thái PUMPKIN phía trên thanh nộ
+-- Chấm trạng thái Pumpkin phía trên thanh nộ
 local statusContainer = Instance.new("Frame")
 statusContainer.Size = UDim2.new(0, 110, 0, 22)
 statusContainer.Position = UDim2.new(0.5, -55, 1, -145)
@@ -46,7 +96,7 @@ statusText.Font = Enum.Font.SourceSansBold
 statusText.TextXAlignment = Enum.TextXAlignment.Left
 statusText.Parent = statusContainer
 
--- Nút bật/tắt menu hình viên kẹo
+-- Nút bật/tắt menu
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 50, 0, 50)
 toggleBtn.Position = UDim2.new(0, 20, 0, 150)
@@ -58,19 +108,19 @@ toggleBtn.ZIndex = 10
 toggleBtn.Parent = screenGui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
--- Khung menu chính (Mở sẵn)
+-- Khung menu chính
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 275)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -137)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0, 290, 0, 340)
+mainFrame.Position = UDim2.new(0.5, -145, 0.5, -170)
+mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+mainFrame.BackgroundTransparency = 0.08
 mainFrame.Visible = true
 mainFrame.ZIndex = 5
 mainFrame.Parent = screenGui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
+title.Size = UDim2.new(1, 0, 0, 36)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 title.Text = "CANDY BETA"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -80,7 +130,59 @@ title.ZIndex = 6
 title.Parent = mainFrame
 Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
 
--- Kéo thả khung menu trên Mobile
+-- Thanh chuyển Tab (Farm / Act)
+local tabFarmBtn = Instance.new("TextButton")
+tabFarmBtn.Size = UDim2.new(0.5, -12, 0, 28)
+tabFarmBtn.Position = UDim2.new(0, 10, 0, 42)
+tabFarmBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 210)
+tabFarmBtn.Text = "FARM"
+tabFarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+tabFarmBtn.TextSize = 11
+tabFarmBtn.Font = Enum.Font.SourceSansBold
+tabFarmBtn.ZIndex = 6
+tabFarmBtn.Parent = mainFrame
+Instance.new("UICorner", tabFarmBtn).CornerRadius = UDim.new(0, 6)
+
+local tabActBtn = Instance.new("TextButton")
+tabActBtn.Size = UDim2.new(0.5, -12, 0, 28)
+tabActBtn.Position = UDim2.new(0.5, 2, 0, 42)
+tabActBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+tabActBtn.Text = "ACT"
+tabActBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+tabActBtn.TextSize = 11
+tabActBtn.Font = Enum.Font.SourceSansBold
+tabActBtn.ZIndex = 6
+tabActBtn.Parent = mainFrame
+Instance.new("UICorner", tabActBtn).CornerRadius = UDim.new(0, 6)
+
+local farmContainer = Instance.new("Frame")
+farmContainer.Size = UDim2.new(1, 0, 1, -76)
+farmContainer.Position = UDim2.new(0, 0, 0, 76)
+farmContainer.BackgroundTransparency = 1
+farmContainer.Visible = true
+farmContainer.ZIndex = 6
+farmContainer.Parent = mainFrame
+
+local actContainer = Instance.new("Frame")
+actContainer.Size = UDim2.new(1, 0, 1, -76)
+actContainer.Position = UDim2.new(0, 0, 0, 76)
+actContainer.BackgroundTransparency = 1
+actContainer.Visible = false
+actContainer.ZIndex = 6
+actContainer.Parent = mainFrame
+
+local function switchTab(tabName)
+    local isFarm = (tabName == "Farm")
+    farmContainer.Visible = isFarm
+    actContainer.Visible = not isFarm
+    tabFarmBtn.BackgroundColor3 = isFarm and Color3.fromRGB(0, 140, 210) or Color3.fromRGB(55, 55, 55)
+    tabActBtn.BackgroundColor3 = (not isFarm) and Color3.fromRGB(0, 140, 210) or Color3.fromRGB(55, 55, 55)
+end
+
+tabFarmBtn.MouseButton1Click:Connect(function() switchTab("Farm") end)
+tabActBtn.MouseButton1Click:Connect(function() switchTab("Act") end)
+
+-- Kéo thả menu trên Mobile
 local dragging, dragInput, dragStart, startPos
 title.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -108,100 +210,107 @@ toggleBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
 end)
 
--- 2. CÁC NÚT CHỨC NĂNG
-local settings = { autoCandy = false, autoDoor = false, autoBossCombat = false }
+-- ==========================================
+-- 3. NỘI DUNG TAB FARM
+-- ==========================================
+local toggleRefs = {}
 
-local function createFeatureToggle(name, posY, key)
+local function paintToggleBtn(btn, name, state)
+    btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 100)
+    btn.Text = name .. (state and ": [ON]" or ": [OFF]")
+end
+
+local function createFarmToggle(name, posY, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.Size = UDim2.new(1, -20, 0, 34)
     btn.Position = UDim2.new(0, 10, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.Text = name .. ": [OFF]"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    btn.TextSize = 12
     btn.Font = Enum.Font.SourceSansBold
-    btn.ZIndex = 6
-    btn.Parent = mainFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    
+    btn.TextSize = 11
+    btn.ZIndex = 7
+    btn.Parent = farmContainer
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+    paintToggleBtn(btn, name, config[key])
+    toggleRefs[key] = { btn = btn, name = name }
+
     btn.MouseButton1Click:Connect(function()
-        settings[key] = not settings[key]
-        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-        btn.TextColor3 = settings[key] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 100)
-        btn.Text = name .. (settings[key] and ": [ON]" or ": [OFF]")
+        config[key] = not config[key]
+        paintToggleBtn(btn, name, config[key])
+        saveConfig()
     end)
 end
 
-createFeatureToggle("CANDY FARM", 45, "autoCandy")
-createFeatureToggle("AUTOMATIC DOOR", 90, "autoDoor")
+createFarmToggle("AUTO FARM ALL (ACT QUEUE)", 0, "autoFarmAll")
+createFarmToggle("CANDY FARM", 38, "autoCandy")
+createFarmToggle("AUTOMATIC DOOR", 76, "autoDoor")
 
 local teleBossBtn = Instance.new("TextButton")
-teleBossBtn.Size = UDim2.new(1, -20, 0, 40)
-teleBossBtn.Position = UDim2.new(0, 10, 0, 135)
+teleBossBtn.Size = UDim2.new(1, -20, 0, 34)
+teleBossBtn.Position = UDim2.new(0, 10, 0, 114)
 teleBossBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
 teleBossBtn.Text = "TELEPORT TO PUMPKIN"
 teleBossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-teleBossBtn.TextSize = 12
+teleBossBtn.TextSize = 11
 teleBossBtn.Font = Enum.Font.SourceSansBold
-teleBossBtn.ZIndex = 6
-teleBossBtn.Parent = mainFrame
-Instance.new("UICorner", teleBossBtn).CornerRadius = UDim.new(0, 8)
+teleBossBtn.ZIndex = 7
+teleBossBtn.Parent = farmContainer
+Instance.new("UICorner", teleBossBtn).CornerRadius = UDim.new(0, 7)
 
-createFeatureToggle("AUTO PUMPKIN COMBAT", 180, "autoBossCombat")
+createFarmToggle("AUTO PUMPKIN COMBAT", 152, "autoBossCombat")
 
 local dropToggleBtn = Instance.new("TextButton")
-dropToggleBtn.Size = UDim2.new(1, -20, 0, 35)
-dropToggleBtn.Position = UDim2.new(0, 10, 0, 225)
+dropToggleBtn.Size = UDim2.new(1, -20, 0, 28)
+dropToggleBtn.Position = UDim2.new(0, 10, 0, 190)
 dropToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 dropToggleBtn.Text = "▼ Select Combat Skills Order"
 dropToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 dropToggleBtn.TextSize = 11
 dropToggleBtn.Font = Enum.Font.SourceSansBold
-dropToggleBtn.ZIndex = 6
-dropToggleBtn.Parent = mainFrame
-Instance.new("UICorner", dropToggleBtn).CornerRadius = UDim.new(0, 8)
+dropToggleBtn.ZIndex = 7
+dropToggleBtn.Parent = farmContainer
+Instance.new("UICorner", dropToggleBtn).CornerRadius = UDim.new(0, 7)
 
-local dropdownFrame = Instance.new("Frame")
-dropdownFrame.Size = UDim2.new(1, -20, 0, 100)
-dropdownFrame.Position = UDim2.new(0, 10, 0, 265)
-dropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+local dropdownFrame = Instance.new("ScrollingFrame")
+dropdownFrame.Size = UDim2.new(1, -20, 0, 68)
+dropdownFrame.Position = UDim2.new(0, 10, 0, 220)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+dropdownFrame.ScrollBarThickness = 4
+dropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 96)
 dropdownFrame.Visible = false
-dropdownFrame.ZIndex = 6
-dropdownFrame.Parent = mainFrame
-Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 8)
+dropdownFrame.ZIndex = 8
+dropdownFrame.Parent = farmContainer
+Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 7)
 
 local skillListOpen = false
 dropToggleBtn.MouseButton1Click:Connect(function()
     skillListOpen = not skillListOpen
     dropdownFrame.Visible = skillListOpen
-    mainFrame.Size = skillListOpen and UDim2.new(0, 280, 0, 375) or UDim2.new(0, 280, 0, 275)
     dropToggleBtn.Text = (skillListOpen and "▲ " or "▼ ") .. "Select Combat Skills Order"
 end)
 
-local skillOrder = {"1", "2", "3", "4"}
 local availableSkills = {"1", "2", "3", "4"}
-
 for i = 1, 4 do
     local sBtn = Instance.new("TextButton")
-    sBtn.Size = UDim2.new(1, -10, 0, 20)
-    sBtn.Position = UDim2.new(0, 5, 0, 5 + (i - 1) * 23)
+    sBtn.Size = UDim2.new(1, -12, 0, 20)
+    sBtn.Position = UDim2.new(0, 4, 0, 3 + (i - 1) * 23)
     sBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-    sBtn.Text = "Skill Slot " .. i .. " : [" .. skillOrder[i] .. "]"
+    sBtn.Text = "Skill Slot " .. i .. " : [" .. tostring(config.skillOrder[i]) .. "]"
     sBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     sBtn.TextSize = 10
     sBtn.Font = Enum.Font.SourceSansBold
-    sBtn.ZIndex = 7
+    sBtn.ZIndex = 9
     sBtn.Parent = dropdownFrame
     Instance.new("UICorner", sBtn).CornerRadius = UDim.new(0, 4)
-    
+
     sBtn.MouseButton1Click:Connect(function()
         for idx, val in ipairs(availableSkills) do
-            if val == skillOrder[i] then
-                skillOrder[i] = availableSkills[idx % #availableSkills + 1]
+            if val == config.skillOrder[i] then
+                config.skillOrder[i] = availableSkills[idx % #availableSkills + 1]
                 break
             end
         end
-        sBtn.Text = "Skill Slot " .. i .. " : [" .. skillOrder[i] .. "]"
+        sBtn.Text = "Skill Slot " .. i .. " : [" .. tostring(config.skillOrder[i]) .. "]"
+        saveConfig()
     end)
 end
 
@@ -209,12 +318,125 @@ mainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
     if not mainFrame.Visible then
         skillListOpen = false
         dropdownFrame.Visible = false
-        mainFrame.Size = UDim2.new(0, 280, 0, 275)
         dropToggleBtn.Text = "▼ Select Combat Skills Order"
     end
 end)
 
--- 3. LOGIC XỬ LÝ GAME & KÍCH HOẠT SKILL MOBILE
+-- ==========================================
+-- 4. NỘI DUNG TAB ACT (THỨ TỰ ƯU TIÊN & ON/OFF)
+-- ==========================================
+local actHint = Instance.new("TextLabel")
+actHint.Size = UDim2.new(1, -20, 0, 24)
+actHint.Position = UDim2.new(0, 10, 0, 0)
+actHint.BackgroundTransparency = 1
+actHint.Text = "Thứ tự ưu tiên (Làm xong mới sang bước sau):"
+actHint.TextColor3 = Color3.fromRGB(210, 210, 210)
+actHint.TextSize = 10
+actHint.Font = Enum.Font.SourceSansBold
+actHint.TextXAlignment = Enum.TextXAlignment.Left
+actHint.ZIndex = 7
+actHint.Parent = actContainer
+
+local queueRows = {}
+local refreshActUI
+
+local function swapQueue(indexA, indexB)
+    if indexA < 1 or indexB < 1 or indexA > #config.actionQueue or indexB > #config.actionQueue then
+        return
+    end
+    local temp = config.actionQueue[indexA]
+    config.actionQueue[indexA] = config.actionQueue[indexB]
+    config.actionQueue[indexB] = temp
+    saveConfig()
+    refreshActUI()
+end
+
+for idx = 1, 3 do
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -20, 0, 56)
+    row.Position = UDim2.new(0, 10, 0, 28 + (idx - 1) * 64)
+    row.BackgroundColor3 = Color3.fromRGB(42, 42, 42)
+    row.ZIndex = 7
+    row.Parent = actContainer
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -138, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.SourceSansBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 8
+    lbl.Parent = row
+
+    local upBtn = Instance.new("TextButton")
+    upBtn.Size = UDim2.new(0, 28, 0, 34)
+    upBtn.Position = UDim2.new(1, -126, 0.5, -17)
+    upBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 95)
+    upBtn.Text = "▲"
+    upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    upBtn.TextSize = 11
+    upBtn.Font = Enum.Font.SourceSansBold
+    upBtn.ZIndex = 8
+    upBtn.Parent = row
+    Instance.new("UICorner", upBtn).CornerRadius = UDim.new(0, 6)
+
+    local downBtn = Instance.new("TextButton")
+    downBtn.Size = UDim2.new(0, 28, 0, 34)
+    downBtn.Position = UDim2.new(1, -94, 0.5, -17)
+    downBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 95)
+    downBtn.Text = "▼"
+    downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    downBtn.TextSize = 11
+    downBtn.Font = Enum.Font.SourceSansBold
+    downBtn.ZIndex = 8
+    downBtn.Parent = row
+    Instance.new("UICorner", downBtn).CornerRadius = UDim.new(0, 6)
+
+    local stateBtn = Instance.new("TextButton")
+    stateBtn.Size = UDim2.new(0, 52, 0, 34)
+    stateBtn.Position = UDim2.new(1, -60, 0.5, -17)
+    stateBtn.TextSize = 11
+    stateBtn.Font = Enum.Font.SourceSansBold
+    stateBtn.ZIndex = 8
+    stateBtn.Parent = row
+    Instance.new("UICorner", stateBtn).CornerRadius = UDim.new(0, 6)
+
+    upBtn.MouseButton1Click:Connect(function() swapQueue(idx, idx - 1) end)
+    downBtn.MouseButton1Click:Connect(function() swapQueue(idx, idx + 1) end)
+    stateBtn.MouseButton1Click:Connect(function()
+        config.actionQueue[idx].enabled = not config.actionQueue[idx].enabled
+        saveConfig()
+        refreshActUI()
+    end)
+
+    queueRows[idx] = { lbl = lbl, stateBtn = stateBtn }
+end
+
+refreshActUI = function()
+    for idx = 1, 3 do
+        local item = config.actionQueue[idx]
+        local rowUI = queueRows[idx]
+        rowUI.lbl.Text = string.format("%d. %s", idx, item.label)
+        if item.enabled then
+            rowUI.stateBtn.BackgroundColor3 = Color3.fromRGB(0, 175, 0)
+            rowUI.stateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            rowUI.stateBtn.Text = "ON"
+        else
+            rowUI.stateBtn.BackgroundColor3 = Color3.fromRGB(190, 40, 40)
+            rowUI.stateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            rowUI.stateBtn.Text = "OFF"
+        end
+    end
+end
+
+refreshActUI()
+
+-- ==========================================
+-- 5. LOGIC GAMEPLAY, SAFE ZONE & PRIORITY QUEUE
+-- ==========================================
 local validCandies = {
     ["DarkOrangeCandy1"] = true, ["DarkOrangeCandy2"] = true,
     ["DarkOrangeCandy3"] = true, ["DarkOrangeCandy4"] = true,
@@ -224,13 +446,81 @@ local validCandies = {
     ["Chocoblox"] = true, ["BloxyDrops"] = true
 }
 local openedDoors = {}
+local SAFE_SKY_CFRAME = CFrame.new(0, 950, 0)
 
 local function getBossTarget()
     local live = Workspace:FindFirstChild("Live")
     local penyta = live and live:FindFirstChild("Penyta")
-    local hrp = penyta and penyta:FindFirstChild("HumanoidRootPart")
-    if hrp and hrp:IsA("BasePart") then return penyta, hrp end
+    if penyta then
+        local hrp = penyta:FindFirstChild("HumanoidRootPart")
+        local hum = penyta:FindFirstChildOfClass("Humanoid")
+        if hrp and hrp:IsA("BasePart") and (not hum or hum.Health > 0) then
+            return penyta, hrp
+        end
+    end
     return nil, nil
+end
+
+local function findBestCandy(hrp)
+    local allCandies = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
+            local pos = obj.Position
+            if not (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100) then
+                table.insert(allCandies, obj)
+            end
+        end
+    end
+    if #allCandies == 0 then return nil end
+
+    local bestCandy, maxCluster = nil, 0
+    for _, candy in ipairs(allCandies) do
+        local count = 0
+        for _, other in ipairs(allCandies) do
+            if (candy.Position - other.Position).Magnitude <= 30 then
+                count = count + 1
+            end
+        end
+        if count > maxCluster then
+            maxCluster = count
+            bestCandy = candy
+        end
+    end
+
+    if bestCandy then return bestCandy end
+
+    local minDist = math.huge
+    local nearest = nil
+    for _, candy in ipairs(allCandies) do
+        local dist = (candy.Position - hrp.Position).Magnitude
+        if dist < minDist then
+            minDist = dist
+            nearest = candy
+        end
+    end
+    return nearest
+end
+
+local function findNextDoor()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
+            local promptList = {}
+            for _, p in pairs(obj:GetDescendants()) do
+                if p:IsA("ProximityPrompt") then
+                    table.insert(promptList, p)
+                end
+            end
+            if #promptList == 0 or not obj.Parent then
+                openedDoors[obj] = true
+            else
+                local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
+                if targetPart then
+                    return obj, targetPart, promptList
+                end
+            end
+        end
+    end
+    return nil, nil, nil
 end
 
 local function fireGuiButton(guiObj)
@@ -252,7 +542,7 @@ end
 local function triggerMobileM1()
     pcall(function()
         for _, guiObj in pairs(playerGui:GetDescendants()) do
-            if guiObj:IsA("GuiButton") and guiObj.Visible and guiObj.Parent ~= screenGui then
+            if guiObj:IsA("GuiButton") and guiObj.Visible and not guiObj:IsDescendantOf(screenGui) then
                 local gName = string.lower(guiObj.Name)
                 local pName = guiObj.Parent and string.lower(guiObj.Parent.Name) or ""
                 if gName == "punch" or gName == "m1" or gName == "attack" or pName == "punch" or gName:find("punch") then
@@ -277,7 +567,7 @@ local function triggerMobileSkill(slotStr)
                 return
             end
         end
-        
+
         local screenHeight = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize.Y or 800
         for _, guiObj in pairs(playerGui:GetDescendants()) do
             if guiObj:IsA("GuiButton") and guiObj.Visible and not guiObj:IsDescendantOf(screenGui) and guiObj.AbsolutePosition.Y > (screenHeight * 0.6) then
@@ -311,100 +601,110 @@ RunService.Stepped:Connect(function()
     statusDot.BackgroundColor3 = (bossModel and bossPart) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(120, 120, 120)
 end)
 
+-- Các hàm thực thi từng hành động (trả về true nếu đang thực thi mục tiêu, false nếu không còn mục tiêu để chuyển bước kế tiếp)
+local currentSkillIndex = 1
+local actionDelay = 0
+
+local function runBossAction(hrp)
+    local bossModel, bossPart = getBossTarget()
+    if bossModel and bossPart then
+        hrp.CFrame = bossPart.CFrame
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        triggerMobileM1()
+        actionDelay = actionDelay + 1
+        if actionDelay >= 18 then
+            actionDelay = 0
+            triggerMobileSkill(config.skillOrder[currentSkillIndex])
+            currentSkillIndex = currentSkillIndex % #config.skillOrder + 1
+        end
+        return true
+    end
+    return false
+end
+
+local function runCandyAction(hrp)
+    local bestCandy = findBestCandy(hrp)
+    if bestCandy then
+        hrp.CFrame = CFrame.new(bestCandy.Position + Vector3.new(0, 2.5, 0), hrp.Position + hrp.CFrame.LookVector)
+        return true
+    end
+    return false
+end
+
+local function runDoorAction(hrp)
+    local doorObj, targetPart, promptList = findNextDoor()
+    if doorObj and targetPart then
+        hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 3)
+        for _ = 1, 8 do
+            pcall(function()
+                for _, prompt in ipairs(promptList) do
+                    prompt.MaxActivationDistance = 999999
+                    prompt.HoldDuration = 0
+                    fireproximityprompt(prompt)
+                end
+            end)
+            task.wait(0.01)
+        end
+
+        local stillHasPrompt = false
+        for _, p in pairs(doorObj:GetDescendants()) do
+            if p:IsA("ProximityPrompt") then
+                stillHasPrompt = true
+                break
+            end
+        end
+        if not stillHasPrompt then
+            openedDoors[doorObj] = true
+        end
+        return true
+    end
+    return false
+end
+
+local function executeActionById(id, hrp)
+    if id == "boss" then
+        return runBossAction(hrp)
+    elseif id == "candy" then
+        return runCandyAction(hrp)
+    elseif id == "door" then
+        return runDoorAction(hrp)
+    end
+    return false
+end
+
 task.spawn(function()
-    local currentSkillIndex = 1
-    local actionDelay = 0
     while true do
         task.wait(0.03)
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            if settings.autoBossCombat then
-                local bossModel, bossPart = getBossTarget()
-                if bossModel and bossPart then
-                    hrp.CFrame = bossPart.CFrame
+            if config.autoFarmAll then
+                local didWork = false
+                for _, item in ipairs(config.actionQueue) do
+                    if item.enabled then
+                        -- Chỉ chuyển sang hành động tiếp theo khi hành động ưu tiên hiện tại trả về false (hết mục tiêu/đã xong)
+                        if executeActionById(item.id, hrp) then
+                            didWork = true
+                            break
+                        end
+                    end
+                end
+                if not didWork then
+                    hrp.CFrame = SAFE_SKY_CFRAME
                     hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    triggerMobileM1()
-                    actionDelay = actionDelay + 1
-                    if actionDelay >= 18 then
-                        actionDelay = 0
-                        triggerMobileSkill(skillOrder[currentSkillIndex])
-                        currentSkillIndex = currentSkillIndex % #skillOrder + 1
-                    end
-                    continue
                 end
+                continue
             end
-            
-            if settings.autoCandy then
-                local bestCandyCenter, maxCandiesInCluster, allCandies = nil, 0, {}
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and validCandies[obj.Name] and obj.Position.Y > -10 then
-                        local pos = obj.Position
-                        if not (pos.X > 500 and pos.X < 800 and pos.Z > -200 and pos.Z < 100) then
-                            table.insert(allCandies, obj)
-                        end
-                    end
-                end
-                for _, candy in ipairs(allCandies) do
-                    local count = 0
-                    for _, other in ipairs(allCandies) do
-                        if (candy.Position - other.Position).Magnitude <= 30 then count = count + 1 end
-                    end
-                    if count > maxCandiesInCluster then
-                        maxCandiesInCluster = count
-                        bestCandyCenter = candy
-                    end
-                end
-                if not bestCandyCenter and #allCandies > 0 then
-                    local minDist = math.huge
-                    for _, candy in ipairs(allCandies) do
-                        local dist = (candy.Position - hrp.Position).Magnitude
-                        if dist < minDist then minDist = dist; bestCandyCenter = candy end
-                    end
-                end
-                if bestCandyCenter then
-                    hrp.CFrame = CFrame.new(bestCandyCenter.Position + Vector3.new(0, 2.5, 0), hrp.Position + hrp.CFrame.LookVector)
-                    task.wait(0.02)
-                    continue
-                end
+
+            -- Chế độ bật từng chức năng riêng lẻ ở tab Farm
+            if config.autoBossCombat then
+                if runBossAction(hrp) then continue end
             end
-            
-            if settings.autoDoor then
-                local foundDoor = false
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj.Name == "DOOR 1 NEW" and not openedDoors[obj] then
-                        local promptList = {}
-                        for _, p in pairs(obj:GetDescendants()) do
-                            if p:IsA("ProximityPrompt") then table.insert(promptList, p) end
-                        end
-                        if #promptList == 0 or not obj.Parent then
-                            openedDoors[obj] = true
-                        else
-                            local targetPart = obj:FindFirstChild("Right Door") or obj:FindFirstChild("RightDoor") or obj:FindFirstChild("Left Door") or obj:FindFirstChildOfClass("BasePart")
-                            if targetPart then
-                                hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 3)
-                                for i = 1, 8 do
-                                    pcall(function()
-                                        for _, prompt in ipairs(promptList) do
-                                            prompt.MaxActivationDistance = 999999
-                                            prompt.HoldDuration = 0
-                                            fireproximityprompt(prompt)
-                                        end
-                                    end)
-                                    task.wait(0.01)
-                                end
-                                local stillHasPrompt = false
-                                for _, p in pairs(obj:GetDescendants()) do
-                                    if p:IsA("ProximityPrompt") then stillHasPrompt = true; break end
-                                end
-                                if not stillHasPrompt then openedDoors[obj] = true end
-                                foundDoor = true
-                                break
-                            end
-                        end
-                    end
-                end
-                if foundDoor then continue end
+            if config.autoCandy then
+                if runCandyAction(hrp) then continue end
+            end
+            if config.autoDoor then
+                if runDoorAction(hrp) then continue end
             end
         end
     end
