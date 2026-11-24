@@ -1,4 +1,4 @@
--- TSB CANDY BETA - Behind-Back Aim, Continuous Skill/M1 Spam & Pumpkin ESP
+-- TSB CANDY BETA - Auto Hold 4.2s Candy Roll (500 Candy Only - Robux Protected)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -24,6 +24,7 @@ local config = {
     autoBossCombat = false,
     autoFarmAll = false,
     espPumpkin = false,
+    autoCandyRoll = false,
     skillOrder = {"1", "2", "3", "4"},
     actionQueue = {
         { id = "candy", label = "Nhặt kẹo", enabled = true },
@@ -50,6 +51,7 @@ local function loadConfig()
                 if type(decoded.autoBossCombat) == "boolean" then config.autoBossCombat = decoded.autoBossCombat end
                 if type(decoded.autoFarmAll) == "boolean" then config.autoFarmAll = decoded.autoFarmAll end
                 if type(decoded.espPumpkin) == "boolean" then config.espPumpkin = decoded.espPumpkin end
+                if type(decoded.autoCandyRoll) == "boolean" then config.autoCandyRoll = decoded.autoCandyRoll end
                 if type(decoded.skillOrder) == "table" and #decoded.skillOrder == 4 then
                     config.skillOrder = decoded.skillOrder
                 end
@@ -109,8 +111,8 @@ toggleBtn.Parent = screenGui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 290, 0, 375)
-mainFrame.Position = UDim2.new(0.5, -145, 0.5, -187)
+mainFrame.Size = UDim2.new(0, 290, 0, 410)
+mainFrame.Position = UDim2.new(0.5, -145, 0.5, -205)
 mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 mainFrame.BackgroundTransparency = 0.08
 mainFrame.Visible = true
@@ -218,7 +220,7 @@ end
 
 local function createFarmToggle(name, posY, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 32)
+    btn.Size = UDim2.new(1, -20, 0, 31)
     btn.Position = UDim2.new(0, 10, 0, posY)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 11
@@ -235,13 +237,14 @@ local function createFarmToggle(name, posY, key)
 end
 
 createFarmToggle("AUTO FARM ALL (ACT QUEUE)", 0, "autoFarmAll")
-createFarmToggle("CANDY FARM", 36, "autoCandy")
-createFarmToggle("AUTOMATIC DOOR", 72, "autoDoor")
-createFarmToggle("PUMPKIN ESP", 108, "espPumpkin")
+createFarmToggle("CANDY FARM", 35, "autoCandy")
+createFarmToggle("AUTOMATIC DOOR", 70, "autoDoor")
+createFarmToggle("AUTO ROLL CANDY (500)", 105, "autoCandyRoll")
+createFarmToggle("PUMPKIN ESP", 140, "espPumpkin")
 
 local teleBossBtn = Instance.new("TextButton")
-teleBossBtn.Size = UDim2.new(1, -20, 0, 32)
-teleBossBtn.Position = UDim2.new(0, 10, 0, 144)
+teleBossBtn.Size = UDim2.new(1, -20, 0, 31)
+teleBossBtn.Position = UDim2.new(0, 10, 0, 175)
 teleBossBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
 teleBossBtn.Text = "TELEPORT TO PUMPKIN"
 teleBossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -251,11 +254,11 @@ teleBossBtn.ZIndex = 7
 teleBossBtn.Parent = farmContainer
 Instance.new("UICorner", teleBossBtn).CornerRadius = UDim.new(0, 7)
 
-createFarmToggle("AUTO PUMPKIN COMBAT", 180, "autoBossCombat")
+createFarmToggle("AUTO PUMPKIN COMBAT", 210, "autoBossCombat")
 
 local dropToggleBtn = Instance.new("TextButton")
 dropToggleBtn.Size = UDim2.new(1, -20, 0, 28)
-dropToggleBtn.Position = UDim2.new(0, 10, 0, 216)
+dropToggleBtn.Position = UDim2.new(0, 10, 0, 245)
 dropToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 dropToggleBtn.Text = "▼ Select Combat Skills Order"
 dropToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -266,8 +269,8 @@ dropToggleBtn.Parent = farmContainer
 Instance.new("UICorner", dropToggleBtn).CornerRadius = UDim.new(0, 7)
 
 local dropdownFrame = Instance.new("ScrollingFrame")
-dropdownFrame.Size = UDim2.new(1, -20, 0, 68)
-dropdownFrame.Position = UDim2.new(0, 10, 0, 246)
+dropdownFrame.Size = UDim2.new(1, -20, 0, 54)
+dropdownFrame.Position = UDim2.new(0, 10, 0, 275)
 dropdownFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
 dropdownFrame.ScrollBarThickness = 4
 dropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 96)
@@ -430,7 +433,7 @@ end
 refreshActUI()
 
 -- ==========================================
--- 5. NOCLIP, PUMPKIN ESP, BEHIND-BACK AIM & SPAM
+-- 5. NOCLIP, PUMPKIN ESP, HOLD-ROLL 500 CANDY & COMBAT
 -- ==========================================
 local validCandies = {
     ["DarkOrangeCandy1"] = true, ["DarkOrangeCandy2"] = true,
@@ -442,7 +445,9 @@ local validCandies = {
 }
 local openedDoors = {}
 local SAFE_SKY_CFRAME = CFrame.new(0, 950, 0)
-local BEHIND_DISTANCE = 4.5 -- Cách 1 bước sau lưng con Pumpkin
+local BEHIND_DISTANCE = 4.5
+local SHOPKEEPER_FALLBACK_POS = Vector3.new(566.85, 445.70, -437.97)
+local ROLL_HOLD_SECONDS = 4.2 -- Thời gian nhấn giữ 4.2 giây để roll bằng 500 kẹo
 
 local isBossNoclipActive = false
 local savedCollideStates = {}
@@ -490,7 +495,6 @@ local function getBossTarget()
     return nil, nil
 end
 
--- Quản lý ESP Pumpkin (Highlight + BillboardGui hiển thị khoảng cách)
 local function clearPumpkinESP()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj.Name == "TSB_PumpkinESP_Highlight" or obj.Name == "TSB_PumpkinESP_Billboard" then
@@ -610,6 +614,36 @@ local function fireGuiButton(guiObj)
     end
 end
 
+-- Hàm nhấn giữ nút UI trên màn hình Mobile trong khoảng thời gian duration (4.2 giây)
+local function holdGuiButton(guiObj, duration)
+    local pos, size = guiObj.AbsolutePosition, guiObj.AbsoluteSize
+    local cx, cy = pos.X + size.X / 2, pos.Y + size.Y / 2
+
+    -- Bắt đầu giữ phím/cảm ứng
+    if firesignal then
+        pcall(function() firesignal(guiObj.MouseButton1Down) end)
+    end
+    pcall(function()
+        VirtualInputManager:SendTouchEvent(2, 0, cx, cy)
+    end)
+
+    local elapsed = 0
+    while elapsed < duration and config.autoCandyRoll and guiObj and guiObj.Parent and guiObj.Visible do
+        task.wait(0.1)
+        elapsed = elapsed + 0.1
+    end
+
+    -- Nhả phím/cảm ứng sau khi giữ đủ 4.2 giây
+    if firesignal then
+        pcall(function() firesignal(guiObj.MouseButton1Up) end)
+        pcall(function() firesignal(guiObj.Activated) end)
+        pcall(function() firesignal(guiObj.MouseButton1Click) end)
+    end
+    pcall(function()
+        VirtualInputManager:SendTouchEvent(2, 2, cx, cy)
+    end)
+end
+
 local function triggerMobileM1()
     pcall(function()
         for _, guiObj in ipairs(playerGui:GetDescendants()) do
@@ -653,7 +687,84 @@ local function triggerMobileSkill(slotStr)
     end)
 end
 
--- Tính toán vị trí đứng cách 1 bước sau lưng Boss và luôn hướng thẳng mặt vào lưng Boss
+-- Tìm nút chọn Roll dòng 1 (500 kẹo), bỏ qua tuyệt đối dòng 2 (Robux)
+local function findCandy500Button()
+    local candidates = {}
+
+    for _, guiObj in ipairs(playerGui:GetDescendants()) do
+        if guiObj:IsA("GuiButton") and guiObj.Visible and not guiObj:IsDescendantOf(screenGui) then
+            local combinedText = string.lower(guiObj.Name)
+            if guiObj:IsA("TextButton") then
+                combinedText = combinedText .. " " .. string.lower(guiObj.Text)
+            end
+            for _, child in ipairs(guiObj:GetDescendants()) do
+                if child:IsA("TextLabel") then
+                    combinedText = combinedText .. " " .. string.lower(child.Text)
+                end
+            end
+
+            local isRobuxBtn = combinedText:find("robux") or combinedText:find("r%$") or combinedText:find("99")
+            if not isRobuxBtn then
+                if combinedText:find("500") or combinedText:find("candy") then
+                    table.insert(candidates, guiObj)
+                end
+            end
+        end
+    end
+
+    -- Nếu tìm thấy nhiều nút hợp lệ, ưu tiên nút nằm cao hơn trên màn hình (Dòng 1: 500 kẹo)
+    if #candidates > 0 then
+        table.sort(candidates, function(a, b)
+            return a.AbsolutePosition.Y < b.AbsolutePosition.Y
+        end)
+        return candidates[1]
+    end
+
+    return nil
+end
+
+local isHoldingRoll = false
+local function runAutoCandyRoll(hrp)
+    setBossNoclip(false)
+
+    -- 1. Dịch chuyển tới vị trí Shopkeeper trong Workspace.Cart
+    local cart = Workspace:FindFirstChild("Cart")
+    local shopkeeper = cart and cart:FindFirstChild("Shopkeeper")
+    local skRoot = shopkeeper and shopkeeper:FindFirstChild("HumanoidRootPart")
+    local targetPos = skRoot and skRoot.Position or SHOPKEEPER_FALLBACK_POS
+
+    if (hrp.Position - targetPos).Magnitude > 6 then
+        hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 0, 3.5), targetPos)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+    end
+
+    -- 2. Kích hoạt ProximityPrompt nếu có trong Workspace.Cart
+    if cart then
+        pcall(function()
+            for _, desc in ipairs(cart:GetDescendants()) do
+                if desc:IsA("ProximityPrompt") then
+                    desc.MaxActivationDistance = 999999
+                    desc.HoldDuration = 0
+                    fireproximityprompt(desc)
+                end
+            end
+        end)
+    end
+
+    -- 3. Tìm dòng 1 (500 kẹo) và nhấn giữ trong 4.2 giây
+    if not isHoldingRoll then
+        local candyBtn = findCandy500Button()
+        if candyBtn then
+            isHoldingRoll = true
+            task.spawn(function()
+                holdGuiButton(candyBtn, ROLL_HOLD_SECONDS)
+                task.wait(0.3)
+                isHoldingRoll = false
+            end)
+        end
+    end
+end
+
 local function getBehindBossCFrame(bossPart)
     local bossCF = bossPart.CFrame
     local behindPos = (bossCF * CFrame.new(0, 0, BEHIND_DISTANCE)).Position
@@ -682,7 +793,6 @@ RunService.Stepped:Connect(function()
     updatePumpkinESP(bossModel, bossPart, hrp)
 end)
 
--- Spam M1 liên tục và xoay vòng kích hoạt ngay các skill đang sẵn sàng theo thứ tự
 local skillCycleIndex = 1
 local skillSpamTick = 0
 
@@ -691,15 +801,12 @@ local function runBossAction(hrp)
     if bossModel and bossPart then
         setBossNoclip(true)
 
-        -- Bay bám sát sau lưng Boss 1 bước (4.5 studs) và khóa tâm ngắm thẳng vào lưng Boss
         hrp.CFrame = getBehindBossCFrame(bossPart)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
 
-        -- Spam M1 liên tục
         triggerMobileM1()
 
-        -- Xoay vòng kích hoạt liên tục tất cả skill trong danh sách ưu tiên (chiêu nào hồi là tung ngay)
         skillSpamTick = skillSpamTick + 1
         if skillSpamTick >= 4 then
             skillSpamTick = 0
@@ -774,6 +881,11 @@ task.spawn(function()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
+            if config.autoCandyRoll then
+                runAutoCandyRoll(hrp)
+                continue
+            end
+
             if config.autoFarmAll then
                 local didWork = false
                 for _, item in ipairs(config.actionQueue) do
